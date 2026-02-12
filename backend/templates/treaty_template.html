@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Attachment to Form 1040-NR</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2.5cm;
+        }
+        body {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #000;
+        }
+        .header {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+        }
+        .section {
+            margin-bottom: 1.5rem;
+        }
+        .label {
+            font-weight: bold;
+        }
+        .signature-line {
+            margin-top: 3rem;
+            border-top: 1px solid #000;
+            width: 60%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        ATTACHMENT TO FORM 1040-NR
+    </div>
+
+    <div class="section">
+        <div><span class="label">Taxpayer Name:</span> {{ full_name }}</div>
+        <div><span class="label">SSN/ITIN:</span> {{ ssn }}</div>
+        <div><span class="label">Tax Year:</span> {{ tax_year }}</div>
+    </div>
+
+    <div class="section">
+        <div class="label" style="text-align: center; margin-bottom: 1rem;">
+            Claim for Standard Deduction under Article 21(2) of the U.S.–India Income Tax Treaty
+        </div>
+        <p>
+            I, {{ full_name }}, am a resident of India present in the United States solely for the purpose of education at {{ university }}. I am claiming the benefits of Article 21(2) of the U.S.–India Income Tax Treaty.
+        </p>
+    </div>
+
+    <div class="section">
+        <p>
+            <span class="label">Treaty Provision:</span> Article 21(2) of the U.S.–India Income Tax Treaty allows students from India to claim the standard deduction even if they are nonresidents for tax purposes.
+        </p>
+    </div>
+
+    <div class="section">
+        <p class="label">Calculation:</p>
+        <p>
+            My income effectively connected with a U.S. trade or business is ${{ "{:,.2f}".format(income) }}.
+        </p>
+        <p>
+            {% if income < 14600 %}
+            Since my income is less than the standard deduction amount of $14,600, I am claiming a standard deduction equal to my income, resulting in zero taxable income.
+            {% else %}
+            I am claiming the standard deduction applicable to a single filer for the tax year {{ tax_year }}, which is $14,600.
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="section" style="margin-top: 3rem;">
+        <p>I certify that all information provided herein is true and correct.</p>
+    </div>
+
+    <div class="section" style="margin-top: 4rem;">
+        <div class="signature-line"></div>
+        <div>Signature</div>
+        <div style="margin-top: 0.5rem;">Date: ____________________</div>
+    </div>
+
+</body>
+</html>
