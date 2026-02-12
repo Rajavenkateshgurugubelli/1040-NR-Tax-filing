@@ -34,16 +34,16 @@ const TaxWizard = () => {
             ssn: Yup.string().required('Required'),
             address: Yup.string().required('Required'),
             city: Yup.string().required('Required'),
-            state: Yup.string().required('Required'),
-            zip_code: Yup.string().required('Required'),
+            state: Yup.string().required('Required').length(2, 'Use 2-letter code'),
+            zip_code: Yup.string().required('Required').matches(/^\d{5}$/, 'Must be 5 digits'),
             university: Yup.string().required('Required'),
             entry_date: Yup.date().required('Required'),
         }),
         // Step 1: Presence Test
         Yup.object({
-            days_present_2025: Yup.number().required('Required').min(0, 'Cannot be negative'),
-            days_present_2024: Yup.number().min(0),
-            days_present_2023: Yup.number().min(0),
+            days_present_2025: Yup.number().required('Required').min(0, 'Cannot be negative').max(366, 'Cannot exceed 366 days'),
+            days_present_2024: Yup.number().min(0).max(366),
+            days_present_2023: Yup.number().min(0).max(366),
         }),
         // Step 2: Income
         Yup.object({
