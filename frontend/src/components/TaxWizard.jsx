@@ -659,7 +659,7 @@ const TaxWizard = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => handlePreview(values)}
-                                                        className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                                                        className="w-full sm:w-auto px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
                                                     >
                                                         Generate Preview
                                                     </button>
@@ -690,7 +690,7 @@ const TaxWizard = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => downloadPackage(values)}
-                                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-full shadow-lg transform transition hover:scale-105 flex items-center text-lg"
+                                                className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-full shadow-lg transform transition hover:scale-105 flex items-center text-lg"
                                             >
                                                 <span className="mr-2">📄</span> Download Complete Tax Package (PDF)
                                             </button>
