@@ -73,7 +73,14 @@ class TaxTreaty:
     def get_standard_deduction(country: str, year: int = 2025) -> int:
         country_data = TaxTreaty.TREATIES.get(country)
         if country_data and country_data.get("standard_deduction", {}).get("allowed"):
-            return country_data["standard_deduction"]["amount_2025"]
+            # India special case: Standard Deduction allowed (Article 21(2))
+            # Values based on IRS Revenue Procedures for each year
+            if year == 2024:
+                return 14600  # Rev. Proc. 2023-34
+            elif year == 2023:
+                return 13850  # Rev. Proc. 2022-38
+            else:
+                return 15000  # 2025 Value (Rev. Proc. 2024-40)
         return 0
 
     @staticmethod

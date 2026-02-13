@@ -80,7 +80,7 @@ def calculate_tax(data: UserData):
     
     standard_deduction = 0
     if data.country_of_residence:
-        standard_deduction = TaxTreaty.get_standard_deduction(data.country_of_residence)
+        standard_deduction = TaxTreaty.get_standard_deduction(data.country_of_residence, data.tax_year)
         
     final_deduction = 0
     
@@ -95,33 +95,53 @@ def calculate_tax(data: UserData):
     # 6. Taxable Income
     taxable_income = max(0, taxable_wages_after_treaty - final_deduction)
     
-    # 6. Tax Calculation (2025 Single Filer Tax Brackets - Official IRS)
-    # Source: IRS 2025 Tax Brackets
-    # 10% on income up to $11,925
-    # 12% on income $11,926 to $48,475
-    # 22% on income $48,476 to $103,350
-    # 24% on income $103,351 to $197,300
-    # 32% on income $197,301 to $250,525
-    # 35% on income $250,526 to $626,350
-    # 37% on income above $626,350
-    
+    # 6. Tax Calculation (Multi-Year Support)
+    # Source: IRS Revenue Procedures for each year
+    TAX_BRACKETS = {
+        2025: [
+            (11925, 0.10),
+            (48475, 0.12),
+            (103350, 0.22),
+            (197300, 0.24),
+            (250525, 0.32),
+            (626350, 0.35),
+            (float('inf'), 0.37)
+        ],
+        2024: [
+            (11600, 0.10),
+            (47150, 0.12),
+            (100525, 0.22),
+            (191950, 0.24),
+            (243725, 0.32),
+            (609350, 0.35),
+            (float('inf'), 0.37)
+        ],
+        2023: [
+            (11000, 0.10),
+            (44725, 0.12),
+            (95375, 0.22),
+            (182100, 0.24),
+            (231250, 0.32),
+            (578125, 0.35),
+            (float('inf'), 0.37)
+        ]
+    }
+
     tax = 0
     income = taxable_income
     
-    if income <= 11925:
-        tax = income * 0.10
-    elif income <= 48475:
-        tax = 11925 * 0.10 + (income - 11925) * 0.12
-    elif income <= 103350:
-        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (income - 48475) * 0.22
-    elif income <= 197300:
-        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (income - 103350) * 0.24
-    elif income <= 250525:
-        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (197300 - 103350) * 0.24 + (income - 197300) * 0.32
-    elif income <= 626350:
-        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (197300 - 103350) * 0.24 + (250525 - 197300) * 0.32 + (income - 250525) * 0.35
-    else:
-        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (197300 - 103350) * 0.24 + (250525 - 197300) * 0.32 + (626350 - 250525) * 0.35 + (income - 626350) * 0.37
+    # Get brackets for the specific year, default to 2025
+    brackets = TAX_BRACKETS.get(data.tax_year, TAX_BRACKETS[2025])
+    
+    previous_limit = 0
+    
+    for limit, rate in brackets:
+        if income > previous_limit:
+            taxable_amount = min(income, limit) - previous_limit
+            tax += taxable_amount * rate
+            previous_limit = limit
+        else:
+            break
         
     # 7. NEC Tax Calculation (Schedule NEC)
     # Dividends

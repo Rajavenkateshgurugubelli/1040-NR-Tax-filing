@@ -3,6 +3,7 @@ from typing import Optional
 
 class UserData(BaseModel):
     # Personal Info
+    tax_year: int = 2025 # Default to current tax year
     full_name: str
     ssn: str
     date_of_birth: Optional[str] = ""  # YYYY-MM-DD

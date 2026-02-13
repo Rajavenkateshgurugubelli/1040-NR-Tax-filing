@@ -103,6 +103,7 @@ const DiagnosticsSection = ({ values }) => {
 const preparePayload = (values) => ({
     ...values,
     // Ensure numbers are numbers
+    tax_year: parseInt(values.tax_year) || 2025,
     wages: parseFloat(values.wages) || 0,
     federal_tax_withheld: parseFloat(values.federal_tax_withheld) || 0,
     social_security_tax_withheld: parseFloat(values.social_security_tax_withheld) || 0,
@@ -147,6 +148,7 @@ const TaxWizard = () => {
 
     const initialValues = {
         // Personal
+        tax_year: '2025',
         full_name: '',
         ssn: '',
         date_of_birth: '',
@@ -297,7 +299,7 @@ const TaxWizard = () => {
     return (
         <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden my-8 border border-slate-200">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-6 text-white flex justify-between items-center flex-wrap">
+            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-4 md:p-6 text-white flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h2 className="text-2xl font-bold">Enterprise Tax Wizard 2025</h2>
                     <p className="text-blue-200 text-sm">For International Students (F-1/J-1) & Non-Residents</p>
@@ -327,7 +329,7 @@ const TaxWizard = () => {
                     return (
                         <Form>
                             {/* Step Progress Bar */}
-                            <div className="bg-gray-50 border-b px-6 py-4">
+                            <div className="bg-gray-50 border-b px-4 py-3 md:px-6 md:py-4">
                                 <div className="flex items-center justify-between text-sm font-medium text-gray-500">
                                     <div className={`flex items-center ${step >= 0 ? 'text-blue-600' : ''}`}>
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 border-2 ${step >= 0 ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}>1</div>
@@ -360,12 +362,21 @@ const TaxWizard = () => {
                                 </div>
                             </div>
 
-                            <div className="p-8 min-h-[400px]">
+                            <div className="p-4 md:p-8 min-h-[400px]">
                                 {/* Step 1: Personal Info */}
                                 {step === 0 && (
                                     <div className="space-y-6 animate-fadeIn">
                                         <h3 className="text-xl font-bold text-gray-800 border-b pb-2">Personal Information</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-1">Tax Year</label>
+                                                <Field as="select" name="tax_year" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                                                    <option value="2025">2025 (File in 2026)</option>
+                                                    <option value="2024">2024 (Past Due)</option>
+                                                    <option value="2023">2023 (Past Due)</option>
+                                                </Field>
+                                                <p className="text-xs text-gray-500 mt-1">Select the year you are filing for.</p>
+                                            </div>
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name (as on Passport)</label>
                                                 <Field name="full_name" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="John Doe" />
@@ -690,24 +701,24 @@ const TaxWizard = () => {
                             </div>
 
                             {/* Footer / Navigation */}
-                            <div className="bg-gray-50 border-t p-6 flex justify-between items-center rounded-b-xl">
+                            <div className="bg-gray-50 border-t p-6 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 rounded-b-xl">
                                 {step > 0 ? (
                                     <button
                                         type="button"
                                         onClick={() => setStep(step - 1)}
-                                        className="px-6 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-100 font-medium transition"
+                                        className="w-full sm:w-auto px-6 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-100 font-medium transition"
                                     >
                                         ← Back
                                     </button>
                                 ) : (
-                                    <div></div>
+                                    <div className="hidden sm:block"></div>
                                 )}
 
                                 {step < 4 ? (
                                     <button
                                         type="button"
                                         onClick={() => setStep(step + 1)}
-                                        className="px-8 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium shadow transition hover:shadow-md"
+                                        className="w-full sm:w-auto px-8 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium shadow transition hover:shadow-md"
                                     >
                                         Next Step →
                                     </button>
