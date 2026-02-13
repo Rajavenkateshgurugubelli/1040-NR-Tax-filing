@@ -201,7 +201,10 @@ const TaxWizard = () => {
         routing_number: '',
         account_number: '',
         account_type: 'Checking',
-        bank_name: ''
+        bank_name: '',
+
+        // Email Delivery (for sending tax return via email)
+        email_delivery: ''
     };
 
     // Load from localStorage OR Backend on mount
@@ -424,12 +427,12 @@ const TaxWizard = () => {
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name (as on Passport)</label>
-                                                <Field name="full_name" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="John Doe" />
+                                                <Field name="full_name" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" />
                                                 <ErrorMessage name="full_name" component="div" className="text-red-500 text-xs mt-1" />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-1">SSN or ITIN</label>
-                                                <Field name="ssn" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="000-00-0000" />
+                                                <Field name="ssn" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" />
                                                 <ErrorMessage name="ssn" component="div" className="text-red-500 text-xs mt-1" />
                                             </div>
                                             <div>
@@ -443,12 +446,12 @@ const TaxWizard = () => {
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number</label>
-                                                <Field name="phone_number" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="+1 (555) 000-0000" />
+                                                <Field name="phone_number" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" />
                                                 <ErrorMessage name="phone_number" component="div" className="text-red-500 text-xs mt-1" />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
-                                                <Field name="email" type="email" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="john@university.edu" />
+                                                <Field name="email" type="email" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" />
                                                 <ErrorMessage name="email" component="div" className="text-red-500 text-xs mt-1" />
                                             </div>
                                         </div>
@@ -465,7 +468,7 @@ const TaxWizard = () => {
                                             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                                                 <div className="md:col-span-6">
                                                     <label className="block text-xs font-bold text-gray-500 uppercase">Street Address</label>
-                                                    <Field name="address" className="w-full p-2 border rounded" placeholder="123 University Ave, Apt 4B" />
+                                                    <Field name="address" className="w-full p-2 border rounded" />
                                                     <ErrorMessage name="address" component="div" className="text-red-500 text-xs mt-1" />
                                                 </div>
                                                 <div className="md:col-span-3">
@@ -541,7 +544,7 @@ const TaxWizard = () => {
                                                     <label className="block text-sm font-bold text-gray-800 mb-1">Box 1: Wages, tips, other compensation</label>
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-2 text-gray-500">$</span>
-                                                        <Field name="wages" type="number" className="w-full pl-7 p-2 border border-gray-300 rounded font-mono text-lg" placeholder="0.00" />
+                                                        <Field name="wages" type="number" className="w-full pl-7 p-2 border border-gray-300 rounded font-mono text-lg" />
                                                     </div>
                                                     <ErrorMessage name="wages" component="div" className="text-red-500 text-xs mt-1" />
                                                 </div>
@@ -549,7 +552,7 @@ const TaxWizard = () => {
                                                     <label className="block text-sm font-bold text-gray-800 mb-1">Box 2: Federal income tax withheld</label>
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-2 text-gray-500">$</span>
-                                                        <Field name="federal_tax_withheld" type="number" className="w-full pl-7 p-2 border border-gray-300 rounded font-mono text-lg" placeholder="0.00" />
+                                                        <Field name="federal_tax_withheld" type="number" className="w-full pl-7 p-2 border border-gray-300 rounded font-mono text-lg" />
                                                     </div>
                                                     <ErrorMessage name="federal_tax_withheld" component="div" className="text-red-500 text-xs mt-1" />
                                                 </div>
@@ -571,7 +574,7 @@ const TaxWizard = () => {
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Box 17: State income tax</label>
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-2 text-gray-500">$</span>
-                                                        <Field name="state_tax_withheld" type="number" className="w-full pl-7 p-2 border rounded" placeholder="0.00" />
+                                                        <Field name="state_tax_withheld" type="number" className="w-full pl-7 p-2 border rounded" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -586,14 +589,14 @@ const TaxWizard = () => {
                                                     <label className="block text-sm font-medium text-gray-800 mb-1">Box 4: Social security tax withheld</label>
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-2 text-gray-500">$</span>
-                                                        <Field name="social_security_tax_withheld" type="number" className="w-full pl-7 p-2 border rounded" placeholder="0.00" />
+                                                        <Field name="social_security_tax_withheld" type="number" className="w-full pl-7 p-2 border rounded" />
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-800 mb-1">Box 6: Medicare tax withheld</label>
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-2 text-gray-500">$</span>
-                                                        <Field name="medicare_tax_withheld" type="number" className="w-full pl-7 p-2 border rounded" placeholder="0.00" />
+                                                        <Field name="medicare_tax_withheld" type="number" className="w-full pl-7 p-2 border rounded" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -652,11 +655,11 @@ const TaxWizard = () => {
 
                                             {values.has_foreign_address && (
                                                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
-                                                    <Field name="foreign_address" placeholder="Street Address" className="w-full p-2 border rounded" />
-                                                    <Field name="foreign_city" placeholder="City" className="w-full p-2 border rounded" />
-                                                    <Field name="foreign_province" placeholder="Province/State" className="w-full p-2 border rounded" />
-                                                    <Field name="foreign_postal_code" placeholder="Postal Code" className="w-full p-2 border rounded" />
-                                                    <Field name="foreign_country" placeholder="Country" className="w-full p-2 border rounded md:col-span-2" />
+                                                    <Field name="foreign_address" className="w-full p-2 border rounded" />
+                                                    <Field name="foreign_city" className="w-full p-2 border rounded" />
+                                                    <Field name="foreign_province" className="w-full p-2 border rounded" />
+                                                    <Field name="foreign_postal_code" className="w-full p-2 border rounded" />
+                                                    <Field name="foreign_country" className="w-full p-2 border rounded md:col-span-2" />
                                                 </div>
                                             )}
                                         </div>
@@ -747,7 +750,6 @@ const TaxWizard = () => {
                                                     <Field
                                                         type="email"
                                                         name="email_delivery"
-                                                        placeholder="Enter your email"
                                                         className="flex-1 border rounded px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500"
                                                     />
                                                     <button
@@ -759,7 +761,7 @@ const TaxWizard = () => {
                                                                 return;
                                                             }
                                                             try {
-                                                                const res = await fetch('http://localhost:8000/api/email-return', {
+                                                                const res = await fetch(`http://localhost:8000/api/email-return?email=${encodeURIComponent(email)}`, {
                                                                     method: 'POST',
                                                                     headers: { 'Content-Type': 'application/json' },
                                                                     body: JSON.stringify(preparePayload(values)) // Payload includes user data
@@ -790,12 +792,12 @@ const TaxWizard = () => {
                             </div>
 
                             {/* Footer / Navigation */}
-                            <div className="bg-gray-50 border-t p-6 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 rounded-b-xl">
+                            <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-4">
                                 {step > 0 ? (
                                     <button
                                         type="button"
                                         onClick={() => setStep(step - 1)}
-                                        className="w-full sm:w-auto px-6 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-100 font-medium transition"
+                                        className="w-full sm:w-auto px-6 py-3 rounded-xl border-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 hover:border-slate-300 transition-all duration-300"
                                     >
                                         ← Back
                                     </button>
@@ -807,7 +809,7 @@ const TaxWizard = () => {
                                     <button
                                         type="button"
                                         onClick={() => setStep(step + 1)}
-                                        className="w-full sm:w-auto px-8 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium shadow transition hover:shadow-md"
+                                        className="w-full sm:w-auto btn-primary flex items-center justify-center gap-2"
                                     >
                                         Next Step →
                                     </button>

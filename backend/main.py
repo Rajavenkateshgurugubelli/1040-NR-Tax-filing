@@ -275,13 +275,13 @@ async def download_complete_package(data: UserData):
 @app.post("/api/email-return")
 async def email_tax_return(
     data: UserData, 
-    email: Optional[str] = None, 
-    current_user: models_db.User = Depends(auth.get_current_user)
+    email: Optional[str] = None
 ):
     """
     Generates and emails the tax return to the user.
+    Public endpoint - uses email from data or query parameter.
     """
-    target_email = email or current_user.email
+    target_email = email or data.email
     if not target_email:
         raise HTTPException(status_code=400, detail="No email provided")
         
