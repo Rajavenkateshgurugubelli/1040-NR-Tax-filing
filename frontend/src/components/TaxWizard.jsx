@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
+import { useAuth } from '../context/AuthContext';
 
 const US_STATES = [
     { value: '', label: 'Select State' }, { value: 'AL', label: 'Alabama' }, { value: 'AK', label: 'Alaska' }, { value: 'AZ', label: 'Arizona' }, { value: 'AR', label: 'Arkansas' }, { value: 'CA', label: 'California' }, { value: 'CO', label: 'Colorado' }, { value: 'CT', label: 'Connecticut' }, { value: 'DE', label: 'Delaware' }, { value: 'FL', label: 'Florida' }, { value: 'GA', label: 'Georgia' }, { value: 'HI', label: 'Hawaii' }, { value: 'ID', label: 'Idaho' }, { value: 'IL', label: 'Illinois' }, { value: 'IN', label: 'Indiana' }, { value: 'IA', label: 'Iowa' }, { value: 'KS', label: 'Kansas' }, { value: 'KY', label: 'Kentucky' }, { value: 'LA', label: 'Louisiana' }, { value: 'ME', label: 'Maine' }, { value: 'MD', label: 'Maryland' }, { value: 'MA', label: 'Massachusetts' }, { value: 'MI', label: 'Michigan' }, { value: 'MN', label: 'Minnesota' }, { value: 'MS', label: 'Mississippi' }, { value: 'MO', label: 'Missouri' }, { value: 'MT', label: 'Montana' }, { value: 'NE', label: 'Nebraska' }, { value: 'NV', label: 'Nevada' }, { value: 'NH', label: 'New Hampshire' }, { value: 'NJ', label: 'New Jersey' }, { value: 'NM', label: 'New Mexico' }, { value: 'NY', label: 'New York' }, { value: 'NC', label: 'North Carolina' }, { value: 'ND', label: 'North Dakota' }, { value: 'OH', label: 'Ohio' }, { value: 'OK', label: 'Oklahoma' }, { value: 'OR', label: 'Oregon' }, { value: 'PA', label: 'Pennsylvania' }, { value: 'RI', label: 'Rhode Island' }, { value: 'SC', label: 'South Carolina' }, { value: 'SD', label: 'South Dakota' }, { value: 'TN', label: 'Tennessee' }, { value: 'TX', label: 'Texas' }, { value: 'UT', label: 'Utah' }, { value: 'VT', label: 'Vermont' }, { value: 'VA', label: 'Virginia' }, { value: 'WA', label: 'Washington' }, { value: 'WV', label: 'West Virginia' }, { value: 'WI', label: 'Wisconsin' }, { value: 'WY', label: 'Wyoming' }, { value: 'DC', label: 'District of Columbia' }
@@ -73,7 +74,7 @@ const DiagnosticsSection = ({ values }) => {
                 </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white p-4 rounded-lg border shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-white p-4 rounded-lg border shadow-sm">
                 <div>
                     <span className="block text-xs text-gray-500 uppercase tracking-wide">Taxable Income</span>
                     <span className="font-mono font-bold text-lg">${result.taxable_income.toFixed(2)}</span>
@@ -125,6 +126,7 @@ const COUNTRIES = [
 
 // Update TaxWizard Steps
 const TaxWizard = () => {
+    const { user, token } = useAuth();
     const [previewUrl, setPreviewUrl] = useState(null);
     const [step, setStep] = useState(0);
 
@@ -202,22 +204,47 @@ const TaxWizard = () => {
         bank_name: ''
     };
 
-    // Load from localStorage on mount
+    // Load from localStorage OR Backend on mount
     const [formattedInitialValues, setFormattedInitialValues] = useState(initialValues);
 
     useEffect(() => {
-        const savedData = localStorage.getItem('taxFormData');
-        const savedTime = localStorage.getItem('taxFormTimestamp');
-        if (savedData) {
-            try {
-                const parsed = JSON.parse(savedData);
-                setFormattedInitialValues({ ...initialValues, ...parsed });
-                setLastSaved(new Date(savedTime));
-            } catch (e) {
-                console.error("Failed to load saved data", e);
+        const loadData = async () => {
+            let dataLoaded = false;
+
+            // 1. Try Cloud Load if logged in
+            if (user && token) {
+                try {
+                    const res = await fetch(`http://localhost:8000/api/tax-returns/2025`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const cloudData = await res.json();
+                        setFormattedInitialValues({ ...initialValues, ...cloudData });
+                        setLastSaved(new Date()); // Assuming fresh load
+                        dataLoaded = true;
+                    }
+                } catch (err) {
+                    console.error("Failed to load cloud data", err);
+                }
             }
-        }
-    }, []);
+
+            // 2. Fallback to LocalStorage if no cloud data
+            if (!dataLoaded) {
+                const savedData = localStorage.getItem('taxFormData');
+                const savedTime = localStorage.getItem('taxFormTimestamp');
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        setFormattedInitialValues({ ...initialValues, ...parsed });
+                        setLastSaved(new Date(savedTime));
+                    } catch (e) {
+                        console.error("Failed to load local data", e);
+                    }
+                }
+            }
+        };
+        loadData();
+    }, [user, token]);
 
     const validationSchemas = [
         // Step 0: Personal
@@ -258,12 +285,30 @@ const TaxWizard = () => {
         })
     ];
 
-    const handleAutoSave = (values) => {
+    const handleAutoSave = async (values) => {
+        // Local Save
         localStorage.setItem('taxFormData', JSON.stringify(values));
         const now = new Date();
         localStorage.setItem('taxFormTimestamp', now.toISOString());
         setLastSaved(now);
         setIsSaving(true);
+
+        // Cloud Save (if logged in)
+        if (user && token) {
+            try {
+                await fetch('http://localhost:8000/api/tax-returns', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(preparePayload(values))
+                });
+            } catch (err) {
+                console.error("Cloud save failed", err);
+            }
+        }
+
         setTimeout(() => setIsSaving(false), 1000);
     };
 
@@ -304,11 +349,11 @@ const TaxWizard = () => {
                     <h2 className="text-2xl font-bold">Enterprise Tax Wizard 2025</h2>
                     <p className="text-blue-200 text-sm">For International Students (F-1/J-1) & Non-Residents</p>
                 </div>
-                <div className="text-right flex flex-col items-end">
+                <div className="w-full sm:w-auto text-right flex flex-row sm:flex-col justify-between sm:justify-end items-center sm:items-end mt-4 sm:mt-0">
                     <span className="text-xs bg-blue-900 bg-opacity-50 px-3 py-1 rounded-full border border-blue-500">
-                        {isSaving ? "Saving..." : lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : "Not saved yet"}
+                        {isSaving ? "Saving..." : lastSaved ? `Saved ${lastSaved.toLocaleTimeString()} ${user ? '(Cloud)' : '(Local)'}` : "Not saved yet"}
                     </span>
-                    <button onClick={handleClearData} className="text-xs text-blue-200 hover:text-white underline mt-1">Clear Data</button>
+                    <button onClick={handleClearData} className="text-xs text-blue-200 hover:text-white underline mt-0 sm:mt-1 ml-4 sm:ml-0">Clear Data</button>
                 </div>
             </div>
 
