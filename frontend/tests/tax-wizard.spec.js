@@ -38,6 +38,10 @@ test('test', async ({ page }) => {
 
 
     // Verify Preview section appears
+    await expect(page.getByText('Review & Diagnostics')).toBeVisible();
+    await expect(page.getByText('Taxable Income')).toBeVisible();
+
+    // Verify Preview section appears
     await expect(page.getByText('1040nr Preview')).toBeVisible();
 
     // Click Submit (Download)

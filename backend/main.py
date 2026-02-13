@@ -7,7 +7,7 @@ import io
 import subprocess
 import tempfile
 from fastapi.responses import StreamingResponse
-from treaty_logic import TaxTreaty
+from .treaty_logic import TaxTreaty
 
 app = FastAPI()
 
@@ -261,6 +261,13 @@ async def preview_form(form_id: str, data: UserData):
 
     pdf_bytes = fill_pdf(template_path, fields)
     return StreamingResponse(pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={form_id}_Preview.pdf"})
+
+@app.post("/api/calculate-tax")
+async def calculate_tax_api(data: UserData):
+    """
+    Returns the tax calculation summary and warnings (JSON) without generating PDF.
+    """
+    return calculate_tax(data)
 
 @app.post("/api/generate-tax-return")
 async def generate_tax_return(data: UserData):

@@ -22,6 +22,85 @@ const VISA_TYPES = [
     { value: 'OTHER', label: 'Other' }
 ];
 
+const DiagnosticsSection = ({ values }) => {
+    const [result, setResult] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    React.useEffect(() => {
+        let active = true;
+        const fetchDiagnostics = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await fetch('http://localhost:8000/api/calculate-tax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(preparePayload(values))
+                });
+                if (!res.ok) throw new Error('Failed to load diagnostics');
+                const data = await res.json();
+                if (active) setResult(data);
+            } catch (err) {
+                if (active) setError(err.message);
+            } finally {
+                if (active) setLoading(false);
+            }
+        };
+        fetchDiagnostics();
+        return () => { active = false; };
+    }, [values]);
+
+    if (loading) return <div className="text-gray-500">Checking tax status...</div>;
+    if (error) return <div className="text-red-500">Error checking status: {error}</div>;
+    if (!result) return null;
+
+    return (
+        <div className="mb-6 space-y-4">
+            {result.warnings.length > 0 && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="flex">
+                        <div className="ml-3">
+                            <h3 className="text-sm font-medium text-yellow-800">Diagnostics / Warnings</h3>
+                            <div className="mt-2 text-sm text-yellow-700">
+                                <ul className="list-disc pl-5 space-y-1">
+                                    {result.warnings.map((w, i) => (
+                                        <li key={i} className={w.includes("CRITICAL") ? "font-bold text-red-700" : ""}>{w}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded border">
+                <div>
+                    <span className="block text-xs text-gray-500 uppercase">Taxable Income</span>
+                    <span className="font-mono font-bold">${result.taxable_income.toFixed(2)}</span>
+                </div>
+                <div>
+                    <span className="block text-xs text-gray-500 uppercase">Total Tax (Est.)</span>
+                    <span className="font-mono font-bold">${result.total_tax.toFixed(2)}</span>
+                </div>
+                <div>
+                    <span className="block text-xs text-gray-500 uppercase">Est. Refund</span>
+                    <span className="font-mono font-bold text-green-600">${result.refund.toFixed(2)}</span>
+                </div>
+                <div>
+                    <span className="block text-xs text-gray-500 uppercase">Est. Owe</span>
+                    <span className="font-mono font-bold text-red-600">${result.owe.toFixed(2)}</span>
+                </div>
+                {result.treaty_exemption > 0 && (
+                    <div className="col-span-2 text-xs text-green-700">
+                        * Applied Treaty Exemption: ${result.treaty_exemption}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const PreviewSection = ({ formType, values }) => {
     const [pdfUrl, setPdfUrl] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -239,7 +318,10 @@ const TaxWizard = () => {
 
                         {step === 2 && (
                             <div className="space-y-4">
-                                <h3 className="text-xl font-semibold text-slate-700">Direct Deposit</h3>
+                                <h3 className="text-xl font-semibold text-slate-700">Review & Diagnostics</h3>
+                                <DiagnosticsSection values={values} />
+
+                                <h3 className="text-xl font-semibold text-slate-700 mt-6">Direct Deposit</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div><label htmlFor="routing_number" className="block text-sm font-medium">Routing Number</label><Field id="routing_number" name="routing_number" className="w-full border p-2 rounded" /></div>
                                     <div><label htmlFor="account_number" className="block text-sm font-medium">Account Number</label><Field id="account_number" name="account_number" className="w-full border p-2 rounded" /></div>
