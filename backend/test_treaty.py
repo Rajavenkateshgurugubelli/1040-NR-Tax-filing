@@ -32,6 +32,42 @@ class TestTaxTreaty(unittest.TestCase):
         # Standard Deduction (Not allowed)
         std_deduction = TaxTreaty.get_standard_deduction("China")
         self.assertEqual(std_deduction, 0)
+    
+    def test_canada_benefits(self):
+        # Article XV - $10,000 Income Exemption
+        exemption = TaxTreaty.get_income_exemption("Canada", "wages")
+        self.assertEqual(exemption, 10000)
+        
+        article = TaxTreaty.get_treaty_article("Canada", "income_exemption")
+        self.assertEqual(article, "XV")
+        
+        # Standard Deduction (Not allowed)
+        std_deduction = TaxTreaty.get_standard_deduction("Canada")
+        self.assertEqual(std_deduction, 0)
+    
+    def test_south_korea_benefits(self):
+        # Article 21 - $2,000 Income Exemption
+        exemption = TaxTreaty.get_income_exemption("South Korea", "wages")
+        self.assertEqual(exemption, 2000)
+        
+        article = TaxTreaty.get_treaty_article("South Korea", "income_exemption")
+        self.assertEqual(article, "21")
+        
+        # Standard Deduction (Not allowed)
+        std_deduction = TaxTreaty.get_standard_deduction("South Korea")
+        self.assertEqual(std_deduction, 0)
+    
+    def test_japan_benefits(self):
+        # Article 20 - $2,000 Income Exemption
+        exemption = TaxTreaty.get_income_exemption("Japan", "wages")
+        self.assertEqual(exemption, 2000)
+        
+        article = TaxTreaty.get_treaty_article("Japan", "income_exemption")
+        self.assertEqual(article, "20")
+        
+        # Standard Deduction (Not allowed)
+        std_deduction = TaxTreaty.get_standard_deduction("Japan")
+        self.assertEqual(std_deduction, 0)
 
     def test_calculate_tax_india(self):
         data = UserData(
@@ -78,6 +114,84 @@ class TestTaxTreaty(unittest.TestCase):
         # 12% on ($43,000 - $11,925) = 12% on $31,075 = $3,729.00
         # Total = $4,921.50
         self.assertAlmostEqual(result["total_tax"], 4921.50, delta=1.0)
+    
+    def test_calculate_tax_canada(self):
+        data = UserData(
+            full_name="John Canada", ssn="789", address="Main St", city="NYC", state="NY", zip_code="10001",
+            country_of_residence="Canada", visa_type="F1", entry_date="2021-08-01",
+            days_present_2025=365,
+            wages=50000.0, federal_tax_withheld=5000.0, state_tax_withheld=2000.0
+        )
+        result = calculate_tax(data)
+        
+        # Should have $10,000 Exemption
+        self.assertEqual(result["treaty_exemption"], 10000)
+        
+        # Taxable Wages = 40000 (50000 - 10000)
+        # Deduction: Canada NO standard deduction
+        # Itemized = State Tax (2000)
+        self.assertEqual(result["itemized_deductions"], 2000)
+        
+        # Taxable Income = 40000 - 2000 = 38000
+        self.assertEqual(result["taxable_income"], 38000)
+        
+        # Tax Check with 2025 brackets:
+        # 10% on first $11,925 = $1,192.50
+        # 12% on ($38,000 - $11,925) = 12% on $26,075 = $3,129.00
+        # Total = $4,321.50
+        self.assertAlmostEqual(result["total_tax"], 4321.50, delta=1.0)
+    
+    def test_calculate_tax_south_korea(self):
+        data = UserData(
+            full_name="Kim Korea", ssn="321", address="Main St", city="NYC", state="NY", zip_code="10001",
+            country_of_residence="South Korea", visa_type="F1", entry_date="2021-08-01",
+            days_present_2025=365,
+            wages=50000.0, federal_tax_withheld=5000.0, state_tax_withheld=2000.0
+        )
+        result = calculate_tax(data)
+        
+        # Should have $2,000 Exemption
+        self.assertEqual(result["treaty_exemption"], 2000)
+        
+        # Taxable Wages = 48000 (50000 - 2000)
+        # Deduction: South Korea NO standard deduction
+        # Itemized = State Tax (2000)
+        self.assertEqual(result["itemized_deductions"], 2000)
+        
+        # Taxable Income = 48000 - 2000 = 46000
+        self.assertEqual(result["taxable_income"], 46000)
+        
+        # Tax Check with 2025 brackets:
+        # 10% on first $11,925 = $1,192.50
+        # 12% on ($46,000 - $11,925) = 12% on $34,075 = $4,089.00
+        # Total = $5,281.50
+        self.assertAlmostEqual(result["total_tax"], 5281.50, delta=1.0)
+    
+    def test_calculate_tax_japan(self):
+        data = UserData(
+            full_name="Tanaka Japan", ssn="654", address="Main St", city="NYC", state="NY", zip_code="10001",
+            country_of_residence="Japan", visa_type="F1", entry_date="2021-08-01",
+            days_present_2025=365,
+            wages=50000.0, federal_tax_withheld=5000.0, state_tax_withheld=2000.0
+        )
+        result = calculate_tax(data)
+        
+        # Should have $2,000 Exemption
+        self.assertEqual(result["treaty_exemption"], 2000)
+        
+        # Taxable Wages = 48000 (50000 - 2000)
+        # Deduction: Japan NO standard deduction
+        # Itemized = State Tax (2000)
+        self.assertEqual(result["itemized_deductions"], 2000)
+        
+        # Taxable Income = 48000 - 2000 = 46000
+        self.assertEqual(result["taxable_income"], 46000)
+        
+        # Tax Check with 2025 brackets:
+        # 10% on first $11,925 = $1,192.50
+        # 12% on ($46,000 - $11,925) = 12% on $34,075 = $4,089.00
+        # Total = $5,281.50
+        self.assertAlmostEqual(result["total_tax"], 5281.50, delta=1.0)
 
 if __name__ == '__main__':
     unittest.main()

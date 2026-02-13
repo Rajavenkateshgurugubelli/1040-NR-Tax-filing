@@ -7,6 +7,7 @@ import io
 import subprocess
 import tempfile
 from fastapi.responses import StreamingResponse
+from PyPDF2 import PdfMerger
 
 try:
     from .treaty_logic import TaxTreaty
@@ -28,35 +29,70 @@ class UserData(BaseModel):
     # Personal Info
     full_name: str
     ssn: str
+    date_of_birth: Optional[str] = ""  # YYYY-MM-DD
+    phone_number: Optional[str] = ""
+    email: Optional[str] = ""
+    occupation: Optional[str] = ""
+    
+    # US Address
     address: str
     city: str
     state: str
     zip_code: str
-    country_of_residence: Optional[str] = ""
-    filing_status: Optional[str] = "Single" # Single, Married Filing Separately
     
-    # Visa / Enterprise Fields
-    visa_type: Optional[str] = "F1" # F1, J1, H1B
+    # Foreign Address (if different from US address)
+    has_foreign_address: Optional[bool] = False
+    foreign_address: Optional[str] = ""
+    foreign_city: Optional[str] = ""
+    foreign_province: Optional[str] = ""  # Province/State/County
+    foreign_postal_code: Optional[str] = ""
+    foreign_country: Optional[str] = ""
+    
+    # Country & Filing Status
+    country_of_residence: Optional[str] = ""
+    filing_status: Optional[str] = "Single"  # Single, Married Filing Separately, Married Filing Jointly
+    
+    # Spouse Information (if married)
+    spouse_name: Optional[str] = ""
+    spouse_ssn: Optional[str] = ""
+    
+    # Visa / Immigration Fields
+    visa_type: Optional[str] = "F1"  # F1, J1, H1B, Other
     is_student: Optional[bool] = True
-    entry_date: Optional[str] = None # YYYY-MM-DD
+    entry_date: Optional[str] = None  # YYYY-MM-DD
     days_present_2025: Optional[int] = 365
     days_present_2024: Optional[int] = 0
     days_present_2023: Optional[int] = 0
     
-    # Income
-    wages: float # W-2 Box 1
-    federal_tax_withheld: float # W-2 Box 2
-    social_security_tax_withheld: Optional[float] = 0.0 # Box 4 (Should be 0 for F1)
-    medicare_tax_withheld: Optional[float] = 0.0 # Box 6 (Should be 0 for F1)
-    state_tax_withheld: Optional[float] = 0.0 # W-2 Box 17 (Deduction)
+    # Income - W-2 Wages
+    wages: float  # W-2 Box 1
+    federal_tax_withheld: float  # W-2 Box 2
+    social_security_tax_withheld: Optional[float] = 0.0  # Box 4 (Should be 0 for F1/J1)
+    medicare_tax_withheld: Optional[float] = 0.0  # Box 6 (Should be 0 for F1/J1)
+    state_tax_withheld: Optional[float] = 0.0  # W-2 Box 17 (Deduction)
+    
+    # Income - Additional Sources
+    dividend_income: Optional[float] = 0.0  # 1099-DIV
+    interest_income: Optional[float] = 0.0  # 1099-INT
+    capital_gains: Optional[float] = 0.0  # 1099-B (Short-term + Long-term)
+    capital_losses: Optional[float] = 0.0  # 1099-B
+    scholarship_grants: Optional[float] = 0.0  # Taxable portion only
+    fellowship_grants: Optional[float] = 0.0  # Taxable portion only
+    other_income: Optional[float] = 0.0  # Other miscellaneous income
     
     # Deductions
     charitable_contributions: Optional[float] = 0.0
+    student_loan_interest: Optional[float] = 0.0  # Max $2,500
+    moving_expenses: Optional[float] = 0.0  # For military only (post-TCJA)
     
-    # Banking
+    # Tax Credits
+    education_credits: Optional[float] = 0.0  # Form 8863 (American Opportunity, Lifetime Learning)
+    
+    # Banking - Direct Deposit
     routing_number: Optional[str] = ""
     account_number: Optional[str] = ""
-    account_type: Optional[str] = "Checking"
+    account_type: Optional[str] = "Checking"  # Checking or Savings
+    bank_name: Optional[str] = ""
 
 def calculate_tax(data: UserData):
     """
@@ -282,6 +318,42 @@ async def calculate_tax_api(data: UserData):
 @app.post("/api/generate-tax-return")
 async def generate_tax_return(data: UserData):
     return await preview_form("1040nr", data)
+
+@app.post("/api/download-complete-package")
+async def download_complete_package(data: UserData):
+    """
+    Merge all tax forms into a single PDF package for download.
+    Includes: 1040-NR, Form 8843, and Schedule NEC (if applicable).
+    """
+    try:
+        merger = PdfMerger()
+        
+        # Generate 1040-NR
+        pdf_1040nr = await preview_form("1040nr", data)
+        if pdf_1040nr:
+            merger.append(pdf_1040nr)
+        
+        # Generate Form 8843
+        pdf_8843 = await preview_form("8843", data)
+        if pdf_8843:
+            merger.append(pdf_8843)
+        
+        # Write merged PDF to BytesIO
+        output = io.BytesIO()
+        merger.write(output)
+        merger.close()
+        output.seek(0)
+        
+        # Return as downloadable PDF
+        return StreamingResponse(
+            output,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=Tax_Package_2025.pdf"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error merging PDFs: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

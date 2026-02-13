@@ -28,6 +28,39 @@ class TaxTreaty:
                 "article": "20(c)",
                 "note": "Applies to income from personal services for education/training purposes"
             }
+        },
+        "Canada": {
+            "standard_deduction": {
+                "allowed": False,  # NRAs generally cannot claim standard deduction
+                "amount_2025": 0
+            },
+            "income_exemption": {
+                "amount": 10000,  # Article XV: Up to $10,000 for personal services
+                "article": "XV",
+                "note": "Students/trainees exempt on up to $10,000 from personal services; entire amount taxable if exceeds $10,000"
+            }
+        },
+        "South Korea": {
+            "standard_deduction": {
+                "allowed": False,  # NRAs generally cannot claim standard deduction
+                "amount_2025": 0
+            },
+            "income_exemption": {
+                "amount": 2000,  # Article 21: $2,000 exemption for students/trainees
+                "article": "21",
+                "note": "$2,000 annual exemption for students and business apprentices"
+            }
+        },
+        "Japan": {
+            "standard_deduction": {
+                "allowed": False,  # NRAs generally cannot claim standard deduction
+                "amount_2025": 0
+            },
+            "income_exemption": {
+                "amount": 2000,  # Article 20: $2,000 exemption for students/trainees
+                "article": "20",
+                "note": "$2,000 annual exemption for students and business trainees"
+            }
         }
     }
 
