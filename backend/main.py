@@ -7,7 +7,11 @@ import io
 import subprocess
 import tempfile
 from fastapi.responses import StreamingResponse
-from .treaty_logic import TaxTreaty
+
+try:
+    from .treaty_logic import TaxTreaty
+except ImportError:
+    from treaty_logic import TaxTreaty
 
 app = FastAPI()
 
@@ -70,39 +74,34 @@ def calculate_tax(data: UserData):
         current_year = 2025
         years_in_us = current_year - entry_year + 1
         
-        # Simplified: F-1 students exempt for 5 calendar years
+        # F-1 students: exempt for 5 calendar years
+        # J-1 students: exempt for 2 years (non-students) or 5 years (students)
         if data.visa_type == 'F1' and years_in_us <= 5:
             is_exempt_individual = True
-        elif data.visa_type == 'J1' and years_in_us <= 2: # Assuming non-student J1 for conservative check, need refined logic later
-             is_exempt_individual = True # actually J-1 students are also 5 years.
-             if data.is_student: is_exempt_individual = True if years_in_us <= 5 else False
+        elif data.visa_type == 'J1':
+            if data.is_student and years_in_us <= 5:
+                is_exempt_individual = True
+            elif not data.is_student and years_in_us <= 2:
+                is_exempt_individual = True
 
     if is_exempt_individual and total_fica > 0:
         warnings.append(f"WARNING: You had ${total_fica:.2f} in FICA taxes withheld. Based on your entry date ({data.entry_date}), you are an Exempt Individual and should not pay FICA. Ask your employer for a refund.")
     
     # 2. Substantial Presence Test (SPT)
-    # If NOT an Exempt Individual, check days.
+    # Exempt Individuals are excluded from SPT calculation
     is_resident_alien = False
     if not is_exempt_individual:
         days_2025 = data.days_present_2025 or 0
-        days_2024 = data.days_present_2024 or 0 # Note: Frontend doesn't capture this yet, assumming 0 or needs update
-        days_2023 = data.days_present_2023 or 0 # Note: Frontend doesn't capture this yet
+        days_2024 = data.days_present_2024 or 0
+        days_2023 = data.days_present_2023 or 0
         
         spt_days = days_2025 + (days_2024 / 3) + (days_2023 / 6)
         if days_2025 >= 31 and spt_days >= 183:
             is_resident_alien = True
             warnings.append(f"CRITICAL: You meet the Substantial Presence Test ({spt_days:.1f} weighted days). You are likely a Resident Alien for Tax Purposes. This tool (1040-NR) is NOT for you. You should file Form 1040.")
-        elif total_fica == 0 and data.visa_type in ['F1', 'J1']:
-             # Not exempt, but not RA? (e.g. less than 183 days).
-             # If less than 183 days, still NRA. FICA applies only if RA?
-             # Actually, FICA applies if you are RA.
-             # If you are NRA but NOT exempt (e.g. invalid F1 status?), FICA applies?
-             # Generally F1/J1 employment authorization implies FICA exemption ONLY if "Nonresident Alien".
-             # If NRA but fails 5 year rule? Wait, 5 year rule DETERMINES if you are Exempt Individual (from SPT).
-             pass
 
     if is_resident_alien and total_fica == 0:
-         warnings.append("WARNING: You are a Resident Alien (SPT met) but had $0 FICA withheld. You likely owe FICA taxes (Social Security + Medicare).")
+        warnings.append("WARNING: You are a Resident Alien (SPT met) but had $0 FICA withheld. You likely owe FICA taxes (Social Security + Medicare).")
 
     # 3. Income Adjustments (Treaty Exemption)
     # E.g. China $5000 exemption
@@ -132,22 +131,33 @@ def calculate_tax(data: UserData):
     # 5. Taxable Income
     taxable_income = max(0, taxable_wages_after_treaty - final_deduction)
     
-    # 6. Tax Calculation (2025 Single Brackets - Simplified)
+    # 6. Tax Calculation (2025 Single Filer Tax Brackets - Official IRS)
+    # Source: IRS 2025 Tax Brackets
+    # 10% on income up to $11,925
+    # 12% on income $11,926 to $48,475
+    # 22% on income $48,476 to $103,350
+    # 24% on income $103,351 to $197,300
+    # 32% on income $197,301 to $250,525
+    # 35% on income $250,526 to $626,350
+    # 37% on income above $626,350
+    
     tax = 0
     income = taxable_income
     
-    # 10% on first $11,600
-    if income > 11600:
-        tax += 11600 * 0.10
-        remainder = income - 11600
-        # 12% on next chunk up to $47,150
-        if remainder > (47150 - 11600):
-            tax += (47150 - 11600) * 0.12
-            # Simplified: Assuming most students don't exceed this for now
-        else:
-            tax += remainder * 0.12
+    if income <= 11925:
+        tax = income * 0.10
+    elif income <= 48475:
+        tax = 11925 * 0.10 + (income - 11925) * 0.12
+    elif income <= 103350:
+        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (income - 48475) * 0.22
+    elif income <= 197300:
+        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (income - 103350) * 0.24
+    elif income <= 250525:
+        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (197300 - 103350) * 0.24 + (income - 197300) * 0.32
+    elif income <= 626350:
+        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (197300 - 103350) * 0.24 + (250525 - 197300) * 0.32 + (income - 250525) * 0.35
     else:
-        tax += income * 0.10
+        tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (197300 - 103350) * 0.24 + (250525 - 197300) * 0.32 + (626350 - 250525) * 0.35 + (income - 626350) * 0.37
         
     total_tax = round(tax, 2)
     

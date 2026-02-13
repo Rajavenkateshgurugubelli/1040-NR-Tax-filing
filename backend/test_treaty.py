@@ -1,12 +1,18 @@
 import unittest
+import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from treaty_logic import TaxTreaty
 from main import UserData, calculate_tax
 
 class TestTaxTreaty(unittest.TestCase):
     def test_india_benefits(self):
-        # Article 21(2) Standard Deduction
+        # Article 21(2) Standard Deduction - 2025 IRS Value
         std_deduction = TaxTreaty.get_standard_deduction("India")
-        self.assertEqual(std_deduction, 14600)
+        self.assertEqual(std_deduction, 15750)  # Updated to 2025 standard deduction
         
         article = TaxTreaty.get_treaty_article("India", "standard_deduction")
         self.assertEqual(article, "21(2)")
@@ -36,16 +42,16 @@ class TestTaxTreaty(unittest.TestCase):
         )
         result = calculate_tax(data)
         
-        # Should have Standard Deduction of 14600
-        self.assertEqual(result["itemized_deductions"], 14600)
-        # Taxable Income = 50000 - 14600 = 35400
-        self.assertEqual(result["taxable_income"], 35400)
+        # Should have Standard Deduction of $15,750 (2025 value)
+        self.assertEqual(result["itemized_deductions"], 15750)
+        # Taxable Income = 50000 - 15750 = 34250
+        self.assertEqual(result["taxable_income"], 34250)
         
-        # Tax Check (approx):
-        # 11600 * 0.10 = 1160
-        # (35400 - 11600) = 23800 * 0.12 = 2856
-        # Total = 4016
-        self.assertAlmostEqual(result["total_tax"], 4016.0, delta=1.0)
+        # Tax Check with 2025 brackets:
+        # 10% on first $11,925 = $1,192.50
+        # 12% on ($34,250 - $11,925) = 12% on $22,325 = $2,679.00
+        # Total = $3,871.50
+        self.assertAlmostEqual(result["total_tax"], 3871.50, delta=1.0)
 
     def test_calculate_tax_china(self):
         data = UserData(
@@ -59,19 +65,19 @@ class TestTaxTreaty(unittest.TestCase):
         # Should have $5000 Exemption
         self.assertEqual(result["treaty_exemption"], 5000)
         
-        # Taxable Wages = 45000
-        # Deduction? China NO standard deduction.
-        # Itemized = State Tax (2000).
+        # Taxable Wages = 45000 (50000 - 5000)
+        # Deduction: China NO standard deduction
+        # Itemized = State Tax (2000)
         self.assertEqual(result["itemized_deductions"], 2000)
         
         # Taxable Income = 45000 - 2000 = 43000
         self.assertEqual(result["taxable_income"], 43000)
         
-        # Tax Check:
-        # 11600 * 0.10 = 1160
-        # (43000 - 11600) = 31400 * 0.12 = 3768
-        # Total = 4928
-        self.assertAlmostEqual(result["total_tax"], 4928.0, delta=1.0)
+        # Tax Check with 2025 brackets:
+        # 10% on first $11,925 = $1,192.50
+        # 12% on ($43,000 - $11,925) = 12% on $31,075 = $3,729.00
+        # Total = $4,921.50
+        self.assertAlmostEqual(result["total_tax"], 4921.50, delta=1.0)
 
 if __name__ == '__main__':
     unittest.main()

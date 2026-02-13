@@ -11,20 +11,22 @@ class TaxTreaty:
             "standard_deduction": {
                 "allowed": True,
                 "article": "21(2)",
-                "amount_2025": 14600
-            }, # Article 21(2) allows standard deduction
+                "amount_2025": 15750  # Official IRS 2025 Standard Deduction for Single Filers
+            },
             "income_exemption": {
-                "amount": 0 # No specific dollar exemption on wages, just standard deduction
+                "amount": 0,  # No specific dollar exemption on wages, just standard deduction
+                "note": "Article 21(2) grants same exemptions/deductions as US residents"
             }
         },
         "China": {
             "standard_deduction": {
-                "allowed": False, # Generally no standard deduction
+                "allowed": False,  # NRAs generally cannot claim standard deduction
                 "amount_2025": 0
             },
             "income_exemption": {
-                "amount": 5000, # Article 20c: $5000 exemption
-                "article": "20(c)"
+                "amount": 5000,  # Article 20(c): $5,000 exemption for students/trainees (confirmed 2025)
+                "article": "20(c)",
+                "note": "Applies to income from personal services for education/training purposes"
             }
         }
     }
