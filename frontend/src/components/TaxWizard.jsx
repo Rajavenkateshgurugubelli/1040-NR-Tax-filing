@@ -115,8 +115,33 @@ const preparePayload = (values) => ({
     charitable_contributions: parseFloat(values.charitable_contributions) || 0,
 });
 
+
+const COUNTRIES = [
+    "India", "China", "Canada", "South Korea", "Japan", "Mexico", "Vietnam", "Taiwan", "Brazil", "Nepal", "Nigeria", "Bangladesh", "Other"
+];
+
+// ... (keep existing imports and constants)
+
+// Update TaxWizard Steps
 const TaxWizard = () => {
+    const [previewUrl, setPreviewUrl] = useState(null);
     const [step, setStep] = useState(0);
+
+    const handlePreview = async (values) => {
+        try {
+            const response = await fetch('http://localhost:8000/api/download-complete-package', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(preparePayload(values)),
+            });
+            if (!response.ok) throw new Error('Failed to generate preview');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            setPreviewUrl(url);
+        } catch (err) {
+            alert("Error generating preview: " + err.message);
+        }
+    };
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState(null);
 
@@ -410,7 +435,10 @@ const TaxWizard = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-1">Country of Citizenship</label>
-                                                <Field name="country_of_residence" className="w-full p-2 border rounded" placeholder="e.g. India, China, Canada" />
+                                                <Field as="select" name="country_of_residence" className="w-full p-2 border rounded">
+                                                    <option value="">Select Country</option>
+                                                    {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                                </Field>
                                                 <p className="text-xs text-gray-500 mt-1">Used for Treaty Benefits</p>
                                                 <ErrorMessage name="country_of_residence" component="div" className="text-red-500 text-xs mt-1" />
                                             </div>
@@ -472,7 +500,17 @@ const TaxWizard = () => {
                                             </div>
 
                                             <div className="mt-6 pt-6 border-t border-gray-200">
-                                                <h4 className="font-semibold text-gray-700 mb-3">State & Local Taxes</h4>
+                                                <h4 className="font-semibold text-blue-800 mb-3">State Tax Information</h4>
+                                                {values.state === 'TX' || values.state === 'FL' || values.state === 'WA' ? (
+                                                    <p className="text-sm text-blue-700 mb-4">Good news! <strong>{values.state}</strong> does not have state income tax.</p>
+                                                ) : values.state ? (
+                                                    <p className="text-sm text-blue-700 mb-4">
+                                                        <strong>{values.state}</strong> has state income tax.
+                                                        Please ensure you enter the amount from <strong>Box 17</strong> of your W-2 below.
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-sm text-blue-700 mb-4">Select your state in the Address step to see tax rules.</p>
+                                                )}
                                                 <div className="md:w-1/2">
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Box 17: State income tax</label>
                                                     <div className="relative">
@@ -599,6 +637,36 @@ const TaxWizard = () => {
                                                     </Field>
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mt-6">
+                                            <h4 className="font-bold text-gray-800 mb-4">Preview Your Return</h4>
+
+                                            {!previewUrl ? (
+                                                <div className="text-center py-8">
+                                                    <p className="text-gray-600 mb-4">Preview your generated forms before downloading.</p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handlePreview(values)}
+                                                        className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                                                    >
+                                                        Generate Preview
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    <iframe src={previewUrl} className="w-full h-[500px] border rounded shadow-sm" title="PDF Preview"></iframe>
+                                                    <div className="text-right">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPreviewUrl(null)}
+                                                            className="text-sm text-red-600 underline"
+                                                        >
+                                                            Close Preview
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200 mt-6">

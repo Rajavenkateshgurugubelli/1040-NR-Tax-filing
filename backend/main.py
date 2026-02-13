@@ -152,19 +152,40 @@ def calculate_tax(data: UserData):
     
     taxable_wages_after_treaty = max(0, data.wages - treaty_exemption)
 
-    # 4. Deduction Logic
+    # 4. State Tax Validation Logic
+    NO_INCOME_TAX_STATES = ["TX", "FL", "WA", "TN", "NH", "NV", "SD", "WY", "AK"]
+    HIGH_TAX_STATES = ["CA", "NY", "NJ", "OR", "MN", "HI"]
+    
+    state_tax = data.state_tax_withheld or 0
+    state = data.state.upper() if data.state else ""
+    
+    if state in NO_INCOME_TAX_STATES and state_tax > 0:
+        warnings.append(f"WARNING: You entered ${state_tax:.2f} state tax withheld, but {state} has NO state income tax. Please verify Box 17 of your W-2.")
+        
+    if state in HIGH_TAX_STATES and state_tax == 0:
+        warnings.append(f"WARNING: You live in {state} (a high-tax state) but entered $0 state tax withheld. You likely owe state taxes. Check your W-2 Box 17.")
+
+    # 5. Deduction Logic (Itemized vs Standard)
     # NRAs generally cannot claim Standard Deduction.
     # Exception: India (Article 21(2))
     
-    itemized_deductions = (data.state_tax_withheld or 0) + (data.charitable_contributions or 0)
+    itemized_deductions = state_tax + (data.charitable_contributions or 0)
     
     standard_deduction = 0
     if data.country_of_residence:
         standard_deduction = TaxTreaty.get_standard_deduction(data.country_of_residence)
         
-    final_deduction = max(itemized_deductions, standard_deduction)
+    final_deduction = 0
     
-    # 5. Taxable Income
+    if standard_deduction > 0 and standard_deduction > itemized_deductions:
+        final_deduction = standard_deduction
+        # Success message already added later
+    else:
+        final_deduction = itemized_deductions
+        if final_deduction > 0:
+            warnings.append(f"NOTE: You are claiming Itemized Deductions (${final_deduction:.2f}). You MUST file Schedule A (Form 1040-NR) with your return.")
+
+    # 6. Taxable Income
     taxable_income = max(0, taxable_wages_after_treaty - final_deduction)
     
     # 6. Tax Calculation (2025 Single Filer Tax Brackets - Official IRS)

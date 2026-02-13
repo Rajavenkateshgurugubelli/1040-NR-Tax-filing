@@ -11,7 +11,7 @@ class TaxTreaty:
             "standard_deduction": {
                 "allowed": True,
                 "article": "21(2)",
-                "amount_2025": 15750  # Official IRS 2025 Standard Deduction for Single Filers
+                "amount_2025": 15000  # Official IRS 2025 Standard Deduction for Single Filers
             },
             "income_exemption": {
                 "amount": 0,  # No specific dollar exemption on wages, just standard deduction
