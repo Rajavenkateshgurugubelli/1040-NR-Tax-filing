@@ -16,7 +16,8 @@ class TaxTreaty:
             "income_exemption": {
                 "amount": 0,  # No specific dollar exemption on wages, just standard deduction
                 "note": "Article 21(2) grants same exemptions/deductions as US residents"
-            }
+            },
+            "dividend_rate": 25 # Article 10
         },
         "China": {
             "standard_deduction": {
@@ -27,7 +28,8 @@ class TaxTreaty:
                 "amount": 5000,  # Article 20(c): $5,000 exemption for students/trainees (confirmed 2025)
                 "article": "20(c)",
                 "note": "Applies to income from personal services for education/training purposes"
-            }
+            },
+            "dividend_rate": 10 # Article 9
         },
         "Canada": {
             "standard_deduction": {
@@ -38,7 +40,8 @@ class TaxTreaty:
                 "amount": 10000,  # Article XV: Up to $10,000 for personal services
                 "article": "XV",
                 "note": "Students/trainees exempt on up to $10,000 from personal services; entire amount taxable if exceeds $10,000"
-            }
+            },
+            "dividend_rate": 15 # Article X
         },
         "South Korea": {
             "standard_deduction": {
@@ -49,7 +52,8 @@ class TaxTreaty:
                 "amount": 2000,  # Article 21: $2,000 exemption for students/trainees
                 "article": "21",
                 "note": "$2,000 annual exemption for students and business apprentices"
-            }
+            },
+            "dividend_rate": 10 # Article 12
         },
         "Japan": {
             "standard_deduction": {
@@ -60,7 +64,8 @@ class TaxTreaty:
                 "amount": 2000,  # Article 20: $2,000 exemption for students/trainees
                 "article": "20",
                 "note": "$2,000 annual exemption for students and business trainees"
-            }
+            },
+            "dividend_rate": 10 # Article 10
         }
     }
 
@@ -88,3 +93,10 @@ class TaxTreaty:
             elif benefit_type == "income_exemption":
                 return country_data.get("income_exemption", {}).get("article")
         return None
+
+    @staticmethod
+    def get_dividend_rate(country: str) -> int:
+        country_data = TaxTreaty.TREATIES.get(country)
+        if country_data:
+            return country_data.get("dividend_rate", 30) # Default to 30% if not specified
+        return 30

@@ -106,19 +106,22 @@ def calculate_tax(data: UserData):
     
     is_exempt_individual = False
     if data.entry_date:
-        entry_year = int(data.entry_date.split('-')[0])
-        current_year = 2025
-        years_in_us = current_year - entry_year + 1
-        
-        # F-1 students: exempt for 5 calendar years
-        # J-1 students: exempt for 2 years (non-students) or 5 years (students)
-        if data.visa_type == 'F1' and years_in_us <= 5:
-            is_exempt_individual = True
-        elif data.visa_type == 'J1':
-            if data.is_student and years_in_us <= 5:
+        try:
+            entry_year = int(data.entry_date.split('-')[0])
+            current_year = 2025
+            years_in_us = current_year - entry_year + 1
+            
+            # F-1 students: exempt for 5 calendar years
+            # J-1 students: exempt for 2 years (non-students) or 5 years (students)
+            if data.visa_type == 'F1' and years_in_us <= 5:
                 is_exempt_individual = True
-            elif not data.is_student and years_in_us <= 2:
-                is_exempt_individual = True
+            elif data.visa_type == 'J1':
+                if data.is_student and years_in_us <= 5:
+                    is_exempt_individual = True
+                elif not data.is_student and years_in_us <= 2:
+                    is_exempt_individual = True
+        except Exception:
+            pass # Invalid date format
 
     if is_exempt_individual and total_fica > 0:
         warnings.append(f"WARNING: You had ${total_fica:.2f} in FICA taxes withheld. Based on your entry date ({data.entry_date}), you are an Exempt Individual and should not pay FICA. Ask your employer for a refund.")
@@ -146,9 +149,6 @@ def calculate_tax(data: UserData):
         treaty_exemption = TaxTreaty.get_income_exemption(data.country_of_residence)
     
     # Adjusted Gross Income for Tax Purposes
-    # Subtract treaty exempt income from wages effectively or treat as deduction?
-    # Usually: Total Wages -> Subtract Treaty Exempt Income -> AGI on 1040-NR Line 1a vs 1z logic.
-    # For now, treat as a reduction in taxable wages via Line 1z (Exempt under treaty).
     
     taxable_wages_after_treaty = max(0, data.wages - treaty_exemption)
 
@@ -216,12 +216,27 @@ def calculate_tax(data: UserData):
     else:
         tax = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (197300 - 103350) * 0.24 + (250525 - 197300) * 0.32 + (626350 - 250525) * 0.35 + (income - 626350) * 0.37
         
-    total_tax = round(tax, 2)
+    # 7. NEC Tax Calculation (Schedule NEC)
+    # Dividends
+    dividend_rate = 0.30 # Default 30%
+    if data.country_of_residence:
+        dividend_rate = TaxTreaty.get_dividend_rate(data.country_of_residence) / 100.0
+        
+    dividend_tax = (data.dividend_income or 0) * dividend_rate
+    
+    # Interest (Default 30% for now, as portfolio interest exemption requires more complex validation)
+    interest_tax = (data.interest_income or 0) * 0.30
+    
+    nec_tax = round(dividend_tax + interest_tax, 2)
+    
+    total_tax = round(tax + nec_tax, 2)
     
     if treaty_exemption > 0:
         warnings.append(f"SUCCESS: Applied ${treaty_exemption} income exemption based on {data.country_of_residence} tax treaty.")
     if standard_deduction > 0 and final_deduction == standard_deduction:
         warnings.append(f"SUCCESS: Applied Standard Deduction of ${standard_deduction} based on {data.country_of_residence} tax treaty (Article {TaxTreaty.get_treaty_article(data.country_of_residence, 'standard_deduction')}).")
+    if nec_tax > 0:
+        warnings.append(f"NOTE: You have ${nec_tax} in tax on passive income (Schedule NEC). This is added to your total tax liability.")
 
     return {
         "taxable_wages": data.wages,
@@ -229,10 +244,12 @@ def calculate_tax(data: UserData):
         "itemized_deductions": final_deduction,
         "taxable_income": taxable_income,
         "total_tax": total_tax,
-        "wage_tax": total_tax,
+        "wage_tax": round(tax, 2),
+        "nec_tax": nec_tax,
         "refund": max(0, data.federal_tax_withheld - total_tax),
         "owe": max(0, total_tax - data.federal_tax_withheld),
-        "warnings": warnings
+        "warnings": warnings,
+        "dividend_rate": int(dividend_rate * 100)
     }
 
 def generate_fdf(fields):
@@ -269,17 +286,49 @@ def fill_pdf(template_path, fields_dict):
         subprocess.run(pdftk_cmd, check=True)
         
         with open(output_path, "rb") as f:
-            output_bytes = io.BytesIO(f.read())
+            output_bytes = f.read() # Return bytes directly
             
         os.remove(fdf_path)
         os.remove(output_path)
         return output_bytes
     except Exception as e:
         print(f"Error filling PDF: {e}")
-        return io.BytesIO()
+        return b"" # Return empty bytes on error instead of BytesIO
 
-@app.post("/api/preview-form/{form_id}")
-async def preview_form(form_id: str, data: UserData):
+def populate_schedule_nec(data: UserData):
+    """
+    Populate Schedule NEC fields based on Dividend and Interest income.
+    """
+    fields = {}
+    
+    # 1. Dividends (Line 1a)
+    div_income = data.dividend_income or 0
+    if div_income > 0:
+        rate = TaxTreaty.get_dividend_rate(data.country_of_residence) if data.country_of_residence else 30
+        
+        # Map rate to column
+        if rate == 10:
+            col_field = 'form1040-NR[0].Page1[0].Table_NatureOfIncome[0].Line1a[0].f1_5[0]' # Col A 10%
+        elif rate == 15:
+            col_field = 'form1040-NR[0].Page1[0].Table_NatureOfIncome[0].Line1a[0].f1_6[0]' # Col B 15%
+        elif rate == 30:
+            col_field = 'form1040-NR[0].Page1[0].Table_NatureOfIncome[0].Line1a[0].f1_7[0]' # Col C 30%
+        else:
+             col_field = 'form1040-NR[0].Page1[0].Table_NatureOfIncome[0].Line1a[0].f1_8[0]' # Col D Other
+             
+        fields[col_field] = str(div_income)
+        fields['form1040-NR[0].Page1[0].Table_NatureOfIncome[0].Line1a[0].f1_9[0]'] = str(div_income) # Total
+        
+    # 2. Interest (Line 2a) - Defaulting to 30% (Col C) for now
+    int_income = data.interest_income or 0
+    if int_income > 0:
+        # Col C (30%)
+        fields['form1040-NR[0].Page1[0].Table_NatureOfIncome[0].Line2a[0].f1_22[0]'] = str(int_income)
+        fields['form1040-NR[0].Page1[0].Table_NatureOfIncome[0].Line2a[0].f1_24[0]'] = str(int_income) # Total
+        
+    return fields
+
+async def generate_pdf_bytes(form_id: str, data: UserData):
     tax_results = calculate_tax(data)
     forms_dir = os.path.join(os.path.dirname(__file__), "forms")
     
@@ -305,7 +354,8 @@ async def preview_form(form_id: str, data: UserData):
             'topmostSubform[0].Page2[0].f2_05[0]': str(tax_results['taxable_income']), # Line 15
             
             'topmostSubform[0].Page2[0].f2_14[0]': str(tax_results['wage_tax']), # Line 21
-            'topmostSubform[0].Page2[0].Line23a_ReadOrder[0].f2_16[0]': str(tax_results['wage_tax']), # Line 24
+            'topmostSubform[0].Page2[0].f2_15[0]': str(tax_results['nec_tax']), # Line 23a
+            'topmostSubform[0].Page2[0].Line23a_ReadOrder[0].f2_16[0]': str(tax_results['total_tax']), # Line 24
             'topmostSubform[0].Page2[0].Line25_ReadOrder[0].f2_21[0]': str(data.federal_tax_withheld), # Line 25a
             
             'topmostSubform[0].Page2[0].f2_36[0]': str(tax_results['refund']) if tax_results['refund'] > 0 else "", # Refund
@@ -317,7 +367,7 @@ async def preview_form(form_id: str, data: UserData):
     
     elif form_id == "nec":
         template_path = os.path.join(forms_dir, "f1040nrn.pdf") 
-        fields = {} # Placeholder
+        fields = populate_schedule_nec(data)
         
     elif form_id == "8843":
         template_path = os.path.join(forms_dir, "f8843.pdf")
@@ -326,8 +376,16 @@ async def preview_form(form_id: str, data: UserData):
     else:
         raise HTTPException(status_code=404, detail="Form not found")
 
-    pdf_bytes = fill_pdf(template_path, fields)
-    return StreamingResponse(pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={form_id}_Preview.pdf"})
+    return fill_pdf(template_path, fields)
+
+@app.post("/api/preview-form/{form_id}")
+async def preview_form(form_id: str, data: UserData):
+    pdf_bytes = await generate_pdf_bytes(form_id, data)
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes), 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": f"attachment; filename={form_id}_Preview.pdf"}
+    )
 
 @app.post("/api/calculate-tax")
 async def calculate_tax_api(data: UserData):
@@ -350,14 +408,21 @@ async def download_complete_package(data: UserData):
         merger = PdfMerger()
         
         # Generate 1040-NR
-        pdf_1040nr = await preview_form("1040nr", data)
+        pdf_1040nr = await generate_pdf_bytes("1040nr", data)
         if pdf_1040nr:
-            merger.append(pdf_1040nr)
+            merger.append(io.BytesIO(pdf_1040nr))
+        
+        # Check if Schedule NEC is needed
+        tax_results = calculate_tax(data)
+        if tax_results.get('nec_tax', 0) > 0:
+             pdf_nec = await generate_pdf_bytes("nec", data)
+             if pdf_nec:
+                 merger.append(io.BytesIO(pdf_nec))
         
         # Generate Form 8843
-        pdf_8843 = await preview_form("8843", data)
+        pdf_8843 = await generate_pdf_bytes("8843", data)
         if pdf_8843:
-            merger.append(pdf_8843)
+            merger.append(io.BytesIO(pdf_8843))
         
         # Write merged PDF to BytesIO
         output = io.BytesIO()
