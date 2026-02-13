@@ -129,6 +129,24 @@ async def upload_bulk_csv(
         headers={"Content-Disposition": "attachment; filename=bulk_tax_forms.zip"}
     )
 
+@app.get("/api/tax-returns/{tax_year}")
+async def get_tax_return(
+    tax_year: int,
+    current_user: models_db.User = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    db_return = db.query(models_db.TaxReturn).filter(
+        models_db.TaxReturn.user_id == current_user.id,
+        models_db.TaxReturn.tax_year == tax_year
+    ).first()
+    
+    if not db_return:
+        # Return empty/null instead of 404 to indicate no data saved yet, 
+        # allowing frontend to load defaults without erroring out.
+        return None 
+    
+    return db_return.form_data
+
 @app.post("/api/tax-returns")
 async def create_or_update_tax_return(
     data: UserData, 
