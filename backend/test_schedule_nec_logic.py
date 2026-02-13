@@ -1,6 +1,8 @@
 
 import unittest
-from main import calculate_tax, populate_schedule_nec, UserData
+from backend.tax_engine import calculate_tax
+from backend.pdf_engine import populate_schedule_nec
+from backend.models import UserData
 
 class TestScheduleNEC(unittest.TestCase):
     def setUp(self):

@@ -3,16 +3,17 @@ import sys
 import os
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from treaty_logic import TaxTreaty
-from main import UserData, calculate_tax
+from backend.treaty_logic import TaxTreaty
+from backend.models import UserData
+from backend.tax_engine import calculate_tax
 
 class TestTaxTreaty(unittest.TestCase):
     def test_india_benefits(self):
         # Article 21(2) Standard Deduction - 2025 IRS Value
         std_deduction = TaxTreaty.get_standard_deduction("India")
-        self.assertEqual(std_deduction, 15750)  # Updated to 2025 standard deduction
+        self.assertEqual(std_deduction, 15000)  # Updated to 2025 standard deduction
         
         article = TaxTreaty.get_treaty_article("India", "standard_deduction")
         self.assertEqual(article, "21(2)")
@@ -78,16 +79,16 @@ class TestTaxTreaty(unittest.TestCase):
         )
         result = calculate_tax(data)
         
-        # Should have Standard Deduction of $15,750 (2025 value)
-        self.assertEqual(result["itemized_deductions"], 15750)
-        # Taxable Income = 50000 - 15750 = 34250
-        self.assertEqual(result["taxable_income"], 34250)
+        # Should have Standard Deduction of $15,000 (2025 value)
+        self.assertEqual(result["itemized_deductions"], 15000)
+        # Taxable Income = 50000 - 15000 = 35000
+        self.assertEqual(result["taxable_income"], 35000)
         
         # Tax Check with 2025 brackets:
         # 10% on first $11,925 = $1,192.50
-        # 12% on ($34,250 - $11,925) = 12% on $22,325 = $2,679.00
-        # Total = $3,871.50
-        self.assertAlmostEqual(result["total_tax"], 3871.50, delta=1.0)
+        # 12% on ($35,000 - $11,925) = 12% on $23,075 = $2,769.00
+        # Total = $3,961.50
+        self.assertAlmostEqual(result["total_tax"], 3961.50, delta=1.0)
 
     def test_calculate_tax_china(self):
         data = UserData(

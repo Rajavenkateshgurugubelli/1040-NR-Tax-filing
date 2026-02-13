@@ -1,6 +1,7 @@
 
 import unittest
-from main import calculate_tax, UserData
+from backend.tax_engine import calculate_tax
+from backend.models import UserData
 
 class TestStateTaxLogic(unittest.TestCase):
     def setUp(self):

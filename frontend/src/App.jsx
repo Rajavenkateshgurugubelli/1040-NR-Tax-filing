@@ -10,7 +10,7 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
-            US Tax Return Generator <span className="text-blue-600">for Indian Students</span>
+            US Tax Return Generator <span className="text-blue-600">for International Students</span>
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
             Complete Step-by-Step Wizard to generate your Form 1040-NR, Schedule NEC, and Form 8843.
@@ -22,7 +22,7 @@ function App() {
 
         <div className="mt-16 text-center text-sm text-slate-500">
           <p>
-            Disclaimer: This tool calculates taxes based on 2025 rules for F1/J1 students from India.
+            Disclaimer: This tool calculates taxes based on 2025 rules for F1/J1 students.
             <br />Verify all generated forms before mailing.
           </p>
         </div>
