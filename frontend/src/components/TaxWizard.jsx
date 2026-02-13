@@ -98,6 +98,7 @@ const TaxWizard = () => {
         // Visa Info
         visa_type: 'F1',
         entry_date: '',
+        days_present_2025: '365',
 
         // Income
         wages: '',
@@ -122,6 +123,8 @@ const TaxWizard = () => {
             ssn: Yup.string().required('Required'),
             visa_type: Yup.string().required('Required'),
             state: Yup.string().required('Required'),
+            entry_date: Yup.date().required('Required'),
+            days_present_2025: Yup.number().required('Required'),
         }),
         // Step 1: Income & Taxes
         Yup.object({
@@ -169,7 +172,7 @@ const TaxWizard = () => {
             {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">{error}</div>}
 
             <Formik initialValues={initialValues} validationSchema={validationSchemas[step]} onSubmit={handleSubmit}>
-                {({ values, errors, touched, isSubmitting }) => (
+                {({ values, errors, touched, isSubmitting, isValid }) => (
                     <Form className="space-y-6">
                         {step === 0 && (
                             <div className="space-y-4">
@@ -187,13 +190,17 @@ const TaxWizard = () => {
                                     </div>
                                     <div><label htmlFor="country_of_residence" className="block text-sm font-medium">Country of Residence</label><Field id="country_of_residence" name="country_of_residence" className="w-full border p-2 rounded" /></div>
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label htmlFor="entry_date" className="block text-sm font-medium">Date of Entry (First Arrival)</label><Field id="entry_date" type="date" name="entry_date" className="w-full border p-2 rounded" /></div>
+                                    <div><label htmlFor="days_present_2025" className="block text-sm font-medium">Days in US (2025)</label><Field id="days_present_2025" type="number" name="days_present_2025" className="w-full border p-2 rounded" /></div>
+                                </div>
                                 <div className="grid grid-cols-3 gap-4">
-                                    <Field name="address" placeholder="Address" className="col-span-3 w-full border p-2 rounded" />
-                                    <Field name="city" placeholder="City" className="w-full border p-2 rounded" />
-                                    <Field as="select" name="state" className="w-full border p-2 rounded">
+                                    <Field aria-label="Address" name="address" placeholder="Address" className="col-span-3 w-full border p-2 rounded" />
+                                    <Field aria-label="City" name="city" placeholder="City" className="w-full border p-2 rounded" />
+                                    <Field as="select" aria-label="State" name="state" className="w-full border p-2 rounded">
                                         {US_STATES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </Field>
-                                    <Field name="zip_code" placeholder="Zip" className="w-full border p-2 rounded" />
+                                    <Field aria-label="Zip" name="zip_code" placeholder="Zip" className="w-full border p-2 rounded" />
                                 </div>
                             </div>
                         )}
@@ -243,9 +250,9 @@ const TaxWizard = () => {
                         )}
 
                         <div className="pt-6 flex justify-between">
-                            {step > 0 && <button type="button" onClick={() => setStep(step - 1)} className="px-6 py-2 border rounded">Back</button>}
+                            {step > 0 && <button type="button" onClick={(e) => { e.preventDefault(); setStep(step - 1); }} className="px-6 py-2 border rounded">Back</button>}
                             {step < 2 ? (
-                                <button type="button" onClick={() => setStep(step + 1)} className="ml-auto px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Next</button>
+                                <button type="button" onClick={(e) => { e.preventDefault(); setStep(step + 1); }} className="ml-auto px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Next</button>
                             ) : (
                                 <button type="submit" disabled={isSubmitting || loading} className="ml-auto px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700">Download Official PDF</button>
                             )}

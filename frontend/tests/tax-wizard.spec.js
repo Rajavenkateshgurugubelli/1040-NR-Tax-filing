@@ -8,6 +8,9 @@ test('test', async ({ page }) => {
     await page.getByLabel('SSN/ITIN').fill('123-45-6789');
     await page.getByLabel('Visa Type').selectOption('F1');
     await page.getByLabel('Country of Residence').fill('India');
+    // Fill new fields
+    await page.getByLabel('Date of Entry (First Arrival)').fill('2021-08-15');
+    await page.getByLabel('Days in US (2025)').fill('365');
     await page.getByPlaceholder('Address').fill('123 Main St');
     await page.getByPlaceholder('City').fill('New York');
     await page.getByLabel('State', { exact: true }).selectOption('NY'); // Select by label 'State' might be ambiguous with 'State Income Tax' later, but on step 0 it should be fine. actually select keys off name usually or label.
