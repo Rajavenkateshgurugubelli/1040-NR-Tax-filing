@@ -2,7 +2,130 @@ import React, { useState } from 'react';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 
+
 const WizardStep = ({ children }) => children;
+
+const PreviewSection = ({ formType, values }) => {
+    const [pdfUrl, setPdfUrl] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    React.useEffect(() => {
+        let active = true;
+        const fetchPreview = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await fetch(`http://localhost:8000/api/preview-form/${formType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...values,
+                        wages: parseFloat(values.wages) || 0,
+                        federal_tax_withheld: parseFloat(values.federal_tax_withheld) || 0,
+                        dividends: parseFloat(values.dividends) || 0,
+                        stock_gains: parseFloat(values.stock_gains) || 0,
+                        days_present_2025: parseInt(values.days_present_2025) || 0,
+                        days_present_2024: parseInt(values.days_present_2024) || 0,
+                        days_present_2023: parseInt(values.days_present_2023) || 0,
+                    })
+                });
+                if (!res.ok) throw new Error('Failed to load preview');
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                if (active) setPdfUrl(url);
+            } catch (err) {
+                if (active) setError(err.message);
+            } finally {
+                if (active) setLoading(false);
+            }
+        };
+        fetchPreview();
+        return () => {
+            active = false;
+            if (pdfUrl) window.URL.revokeObjectURL(pdfUrl);
+        };
+    }, [formType]);
+
+    return (
+        <div className="border rounded-lg p-4 bg-gray-50">
+            <div className="flex justify-between items-center mb-2">
+                <h4 className="font-bold text-gray-700 uppercase">{formType} Preview</h4>
+                {pdfUrl && (
+                    <a
+                        href={pdfUrl}
+                        download={`${formType}.pdf`}
+                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                    >
+                        Download PDF
+                    </a>
+                )}
+            </div>
+            <div className="aspect-[4/3] w-full bg-gray-200 rounded overflow-hidden border border-gray-300">
+                {loading && <div className="h-full w-full flex items-center justify-center text-gray-500">Loading Preview...</div>}
+                {error && <div className="h-full w-full flex items-center justify-center text-red-500">{error}</div>}
+                {pdfUrl && !loading && (
+                    <iframe src={pdfUrl} className="w-full h-full" title={`${formType} Preview`} />
+                )}
+            </div>
+        </div>
+    );
+};
+
+const US_STATES = [
+    { value: '', label: 'Select State' },
+    { value: 'AL', label: 'Alabama' },
+    { value: 'AK', label: 'Alaska' },
+    { value: 'AZ', label: 'Arizona' },
+    { value: 'AR', label: 'Arkansas' },
+    { value: 'CA', label: 'California' },
+    { value: 'CO', label: 'Colorado' },
+    { value: 'CT', label: 'Connecticut' },
+    { value: 'DE', label: 'Delaware' },
+    { value: 'DC', label: 'District of Columbia' },
+    { value: 'FL', label: 'Florida' },
+    { value: 'GA', label: 'Georgia' },
+    { value: 'HI', label: 'Hawaii' },
+    { value: 'ID', label: 'Idaho' },
+    { value: 'IL', label: 'Illinois' },
+    { value: 'IN', label: 'Indiana' },
+    { value: 'IA', label: 'Iowa' },
+    { value: 'KS', label: 'Kansas' },
+    { value: 'KY', label: 'Kentucky' },
+    { value: 'LA', label: 'Louisiana' },
+    { value: 'ME', label: 'Maine' },
+    { value: 'MD', label: 'Maryland' },
+    { value: 'MA', label: 'Massachusetts' },
+    { value: 'MI', label: 'Michigan' },
+    { value: 'MN', label: 'Minnesota' },
+    { value: 'MS', label: 'Mississippi' },
+    { value: 'MO', label: 'Missouri' },
+    { value: 'MT', label: 'Montana' },
+    { value: 'NE', label: 'Nebraska' },
+    { value: 'NV', label: 'Nevada' },
+    { value: 'NH', label: 'New Hampshire' },
+    { value: 'NJ', label: 'New Jersey' },
+    { value: 'NM', label: 'New Mexico' },
+    { value: 'NY', label: 'New York' },
+    { value: 'NC', label: 'North Carolina' },
+    { value: 'ND', label: 'North Dakota' },
+    { value: 'OH', label: 'Ohio' },
+    { value: 'OK', label: 'Oklahoma' },
+    { value: 'OR', label: 'Oregon' },
+    { value: 'PA', label: 'Pennsylvania' },
+    { value: 'RI', label: 'Rhode Island' },
+    { value: 'SC', label: 'South Carolina' },
+    { value: 'SD', label: 'South Dakota' },
+    { value: 'TN', label: 'Tennessee' },
+    { value: 'TX', label: 'Texas' },
+    { value: 'UT', label: 'Utah' },
+    { value: 'VT', label: 'Vermont' },
+    { value: 'VA', label: 'Virginia' },
+    { value: 'WA', label: 'Washington' },
+    { value: 'WV', label: 'West Virginia' },
+    { value: 'WI', label: 'Wisconsin' },
+    { value: 'WY', label: 'Wyoming' }
+];
 
 const TaxWizard = () => {
     const [step, setStep] = useState(0);
@@ -138,7 +261,11 @@ const TaxWizard = () => {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700">State</label>
-                                        <Field name="state" className="w-full px-4 py-2 border rounded-lg" />
+                                        <Field as="select" name="state" className="w-full px-4 py-2 border rounded-lg bg-white">
+                                            {US_STATES.map(s => (
+                                                <option key={s.value} value={s.value}>{s.label}</option>
+                                            ))}
+                                        </Field>
                                         {errors.state && touched.state && <div className="text-red-500 text-xs">{errors.state}</div>}
                                     </div>
                                     <div>
@@ -221,6 +348,19 @@ const TaxWizard = () => {
                             </div>
                         )}
 
+                        {step === 3 && (
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold text-slate-700">Review & Download</h3>
+                                <p className="text-sm text-slate-500">Preview your forms below. You can download them individually or as a complete package.</p>
+
+                                <div className="grid grid-cols-1 gap-6">
+                                    {['1040nr', 'nec', '8843'].map(form => (
+                                        <PreviewSection key={form} formType={form} values={values} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="pt-6 flex justify-between">
                             {step > 0 && (
                                 <button
@@ -232,7 +372,7 @@ const TaxWizard = () => {
                                 </button>
                             )}
 
-                            {step < 2 ? (
+                            {step < 3 ? (
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -251,7 +391,7 @@ const TaxWizard = () => {
                                     disabled={isSubmitting || loading}
                                     className="ml-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm flex items-center"
                                 >
-                                    {loading ? 'Generating...' : 'Generate Tax Return Package'}
+                                    {loading ? 'Generating...' : 'Download All as Zip'}
                                 </button>
                             )}
                         </div>
