@@ -67,7 +67,7 @@ class TestStateTaxLogic(unittest.TestCase):
         
         result = calculate_tax(data)
         
-        self.assertEqual(result["itemized_deductions"], 15000, "Should apply $15,000 Standard Deduction for India")
+        self.assertEqual(result["itemized_deductions"], 15750, "Should apply $15,750 Standard Deduction for India")
         self.assertFalse(any("Itemized Deductions" in w for w in result["warnings"]), "Should NOT warn about Itemized Deductions if Standard is used")
 
 if __name__ == '__main__':

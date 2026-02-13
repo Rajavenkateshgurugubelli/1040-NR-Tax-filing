@@ -735,11 +735,55 @@ const TaxWizard = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => downloadPackage(values)}
-                                                className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-full shadow-lg transform transition hover:scale-105 flex items-center text-lg"
+                                                className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-full shadow-lg transform transition hover:scale-105 flex items-center text-lg mb-6"
                                             >
                                                 <span className="mr-2">📄</span> Download Complete Tax Package (PDF)
                                             </button>
-                                            <p className="text-xs text-green-600 mt-3">Includes Form 1040-NR, Form 8843, and Schedule NEC (if applicable)</p>
+
+                                            {/* Email Section */}
+                                            <div className="w-full max-w-md bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-2">Email me a copy</h4>
+                                                <div className="flex gap-2">
+                                                    <Field
+                                                        type="email"
+                                                        name="email_delivery"
+                                                        placeholder="Enter your email"
+                                                        className="flex-1 border rounded px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const email = values.email_delivery || values.email;
+                                                            if (!email) {
+                                                                alert("Please enter an email address.");
+                                                                return;
+                                                            }
+                                                            try {
+                                                                const res = await fetch('http://localhost:8000/api/email-return', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify(preparePayload(values)) // Payload includes user data
+                                                                });
+                                                                if (res.ok) {
+                                                                    alert(`Email sent successfully to ${email}!`);
+                                                                } else {
+                                                                    throw new Error("Failed to send email");
+                                                                }
+                                                            } catch (err) {
+                                                                alert("Error sending email: " + err.message);
+                                                            }
+                                                        }}
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition"
+                                                    >
+                                                        Send Email
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                    Check your spam folder if you don't see it within a few minutes.
+                                                </p>
+                                            </div>
+
+                                            <p className="text-xs text-green-600 mt-6">Includes Form 1040-NR, Form 8843, and Schedule NEC (if applicable)</p>
                                         </div>
                                     </div>
                                 )}

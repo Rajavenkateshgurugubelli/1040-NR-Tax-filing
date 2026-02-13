@@ -3,7 +3,7 @@ from typing import Optional, Dict
 class TaxTreaty:
     """
     Handles tax treaty logic for various countries.
-    Currently supports: India (Article 21(2)), China (Article 20).
+    Currently supports: India (Article 21(2)), China (Article 20), Canada (Article XV), South Korea (Article 21), Japan (Article 20).
     """
     
     TREATIES = {
@@ -11,7 +11,7 @@ class TaxTreaty:
             "standard_deduction": {
                 "allowed": True,
                 "article": "21(2)",
-                "amount_2025": 15000  # Official IRS 2025 Standard Deduction for Single Filers
+                "amount_2025": 15750  # Official IRS 2025 Standard Deduction for Single Filers
             },
             "income_exemption": {
                 "amount": 0,  # No specific dollar exemption on wages, just standard deduction
@@ -80,7 +80,7 @@ class TaxTreaty:
             elif year == 2023:
                 return 13850  # Rev. Proc. 2022-38
             else:
-                return 15000  # 2025 Value (Rev. Proc. 2024-40)
+                return 15750  # 2025 Value (Rev. Proc. 2024-40)
         return 0
 
     @staticmethod

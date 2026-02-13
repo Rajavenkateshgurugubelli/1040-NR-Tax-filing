@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from .models import UserData
 from .tax_engine import calculate_tax
 from .pdf_engine import generate_pdf_bytes
+from .email_service import EmailService
 from . import models_db, schemas, auth, database
 
 # Create Database Tables
@@ -217,11 +218,12 @@ async def calculate_tax_api(data: UserData):
 async def generate_tax_return(data: UserData):
     return await preview_form("1040nr", data)
 
-@app.post("/api/download-complete-package")
-async def download_complete_package(data: UserData):
+email_service = EmailService()
+
+async def generate_complete_package_bytes(data: UserData) -> bytes:
     """
-    Merge all tax forms into a single PDF package for download.
-    Includes: 1040-NR, Form 8843, and Schedule NEC (if applicable).
+    Helper to generate the merged PDF package (1040-NR + Schedules).
+    Returns bytes of the final PDF.
     """
     try:
         merger = PdfMerger()
@@ -248,17 +250,52 @@ async def download_complete_package(data: UserData):
         merger.write(output)
         merger.close()
         output.seek(0)
-        
-        # Return as downloadable PDF
-        return StreamingResponse(
-            output,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename=Tax_Package_2025.pdf"
-            }
-        )
+        return output.read()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error merging PDFs: {str(e)}")
+        print(f"Error generating package: {e}")
+        return b""
+
+@app.post("/api/download-complete-package")
+async def download_complete_package(data: UserData):
+    """
+    Merge all tax forms into a single PDF package for download.
+    Includes: 1040-NR, Form 8843, and Schedule NEC (if applicable).
+    """
+    pdf_bytes = await generate_complete_package_bytes(data)
+    
+    if not pdf_bytes:
+        raise HTTPException(status_code=500, detail="Failed to generate PDF package")
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes), 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": "attachment; filename=Complete_Tax_Return_2025.pdf"}
+    )
+
+@app.post("/api/email-return")
+async def email_tax_return(
+    data: UserData, 
+    email: Optional[str] = None, 
+    current_user: models_db.User = Depends(auth.get_current_user)
+):
+    """
+    Generates and emails the tax return to the user.
+    """
+    target_email = email or current_user.email
+    if not target_email:
+        raise HTTPException(status_code=400, detail="No email provided")
+        
+    pdf_bytes = await generate_complete_package_bytes(data)
+    
+    if not pdf_bytes:
+        raise HTTPException(status_code=500, detail="Failed to generate PDF for email")
+        
+    success = email_service.send_tax_return_email(target_email, pdf_bytes)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send email")
+        
+    return {"status": "success", "message": f"Email sent to {target_email}"}
 
 if __name__ == "__main__":
     import uvicorn

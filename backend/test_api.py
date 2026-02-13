@@ -5,9 +5,15 @@ from .main import app
 from .database import Base, get_db
 import pytest
 
+from sqlalchemy.pool import StaticPool
+
 # Setup Test Database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SQLALCHEMY_DATABASE_URL = "sqlite://"
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, 
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def override_get_db():
@@ -36,7 +42,7 @@ def test_register_user():
 
 def test_login_user():
     response = client.post(
-        "/token",
+        "/api/token",
         data={"username": "testuser@example.com", "password": "password123"}
     )
     assert response.status_code == 200

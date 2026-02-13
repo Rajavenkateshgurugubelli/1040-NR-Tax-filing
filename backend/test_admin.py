@@ -7,9 +7,15 @@ from .models_db import User
 from .auth import get_password_hash
 import pytest
 
+from sqlalchemy.pool import StaticPool
+
 # Setup Test Database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_admin.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SQLALCHEMY_DATABASE_URL = "sqlite://"
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, 
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def override_get_db():
@@ -22,7 +28,6 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 # Create tables
-Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 client = TestClient(app)
@@ -49,6 +54,7 @@ def test_admin_access():
     
     # Login as Admin
     response = client.post("/api/token", data={"username": "admin@test.com", "password": "admin123"})
+    assert response.status_code == 200
     token = response.json()["access_token"]
     
     # Access Admin Endpoint
