@@ -25,6 +25,7 @@ const DiagnosticsSection = ({ values }) => {
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [showBreakdown, setShowBreakdown] = useState(false);
 
     useEffect(() => {
         let active = true;
@@ -55,17 +56,21 @@ const DiagnosticsSection = ({ values }) => {
     if (error) return <div className="text-red-500 text-sm">Error checking status: {error}</div>;
     if (!result) return null;
 
+    const formatMoney = (val) => {
+        return val >= 0 ? `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `-$${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
     return (
         <div className="mb-6 space-y-4">
             {result.warnings.length > 0 && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r">
                     <div className="flex">
                         <div className="ml-3">
-                            <h3 className="text-sm font-medium text-yellow-800">Diagnostics / Warnings</h3>
+                            <h3 className="text-sm font-medium text-yellow-800">💡 Important Information</h3>
                             <div className="mt-2 text-sm text-yellow-700 max-h-40 overflow-y-auto">
                                 <ul className="list-disc pl-5 space-y-1">
                                     {result.warnings.map((w, i) => (
-                                        <li key={i} className={w.includes("CRITICAL") ? "font-bold text-red-700" : ""}>{w}</li>
+                                        <li key={i} className={w.includes("CRITICAL") ? "font-bold text-red-700" : w.includes("SUCCESS") ? "text-green-700" : ""}>{w}</li>
                                     ))}
                                 </ul>
                             </div>
@@ -74,32 +79,150 @@ const DiagnosticsSection = ({ values }) => {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-white p-4 rounded-lg border shadow-sm">
-                <div>
-                    <span className="block text-xs text-gray-500 uppercase tracking-wide">Taxable Income</span>
-                    <span className="font-mono font-bold text-lg">${result.taxable_income.toFixed(2)}</span>
+            {/* Main Summary Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 overflow-hidden shadow-lg">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        📊 Your Tax Summary
+                    </h3>
+                    <p className="text-blue-100 text-sm mt-1">Here's a breakdown of your estimated tax calculation for 2025</p>
                 </div>
-                <div>
-                    <span className="block text-xs text-gray-500 uppercase tracking-wide">Total Tax (Est.)</span>
-                    <span className="font-mono font-bold text-lg text-slate-700">${result.total_tax.toFixed(2)}</span>
-                </div>
-                <div>
-                    <span className="block text-xs text-gray-500 uppercase tracking-wide">Est. Refund</span>
-                    <span className="font-mono font-bold text-lg text-green-600">${result.refund.toFixed(2)}</span>
-                </div>
-                <div>
-                    <span className="block text-xs text-gray-500 uppercase tracking-wide">Est. Owe</span>
-                    <span className="font-mono font-bold text-lg text-red-600">${result.owe.toFixed(2)}</span>
-                </div>
-                {result.treaty_exemption > 0 && (
-                    <div className="col-span-2 md:col-span-4 text-xs text-green-700 font-medium bg-green-50 p-2 rounded">
-                        ✓ Applied Treaty Exemption: ${result.treaty_exemption.toLocaleString()}
+
+                <div className="p-6 space-y-6">
+                    {/* Income Breakdown */}
+                    <div className="bg-white rounded-lg p-5 border-2 border-blue-100">
+                        <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                            💰 Income Calculation
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Your Total Wages</span>
+                                <span className="font-mono font-semibold">{formatMoney(result.taxable_wages)}</span>
+                            </div>
+                            {result.treaty_exemption > 0 && (
+                                <div className="flex justify-between text-green-700">
+                                    <span className="flex items-center gap-1">
+                                        <span>✅</span>
+                                        <span>Treaty Exemption (Tax-Free)</span>
+                                    </span>
+                                    <span className="font-mono font-semibold">-{formatMoney(result.treaty_exemption)}</span>
+                                </div>
+                            )}
+                            {result.itemized_deductions > 0 && (
+                                <div className="flex justify-between text-green-700">
+                                    <span className="flex items-center gap-1">
+                                        <span>✅</span>
+                                        <span>Deductions (Standard/Itemized)</span>
+                                    </span>
+                                    <span className="font-mono font-semibold">-{formatMoney(result.itemized_deductions)}</span>
+                                </div>
+                            )}
+                            <div className="border-t-2 border-gray-200 pt-2 mt-2"></div>
+                            <div className="flex justify-between font-bold text-lg">
+                                <span className="text-gray-800">Taxable Income</span>
+                                <span className="font-mono text-blue-600">{formatMoney(result.taxable_income)}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">💡 This is the amount used to calculate your federal tax</p>
+                        </div>
                     </div>
-                )}
+
+                    {/* Tax Breakdown */}
+                    <div className="bg-white rounded-lg p-5 border-2 border-orange-100">
+                        <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                            📋 Tax Breakdown
+                            <button
+                                onClick={() => setShowBreakdown(!showBreakdown)}
+                                className="ml-auto text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 transition"
+                            >
+                                {showBreakdown ? 'Hide Details' : 'Show Details'}
+                            </button>
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Tax on Wages (Progressive Rates)</span>
+                                <span className="font-mono font-semibold">{formatMoney(result.wage_tax)}</span>
+                            </div>
+                            {result.nec_tax > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Tax on Investment Income (30% flat)</span>
+                                    <span className="font-mono font-semibold">{formatMoney(result.nec_tax)}</span>
+                                </div>
+                            )}
+                            <div className="border-t-2 border-gray-200 pt-2 mt-2"></div>
+                            <div className="flex justify-between font-bold text-lg">
+                                <span className="text-gray-800">Total Tax Owed</span>
+                                <span className="font-mono text-orange-600">{formatMoney(result.total_tax)}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">💡 This is your total federal tax liability for the year</p>
+                        </div>
+
+                        {showBreakdown && (
+                            <div className="mt-4 pt-4 border-t border-gray-200 bg-gray-50 -mx-5 -mb-5 p-5 rounded-b-lg">
+                                <h5 className="text-xs font-bold text-gray-700 mb-2 uppercase">Tax Rate Breakdown:</h5>
+                                <div className="text-xs text-gray-600 space-y-1">
+                                    <p>• Wages are taxed using <strong>progressive tax brackets</strong> (10%, 12%, 22%, 24%, 32%, 35%, 37%)</p>
+                                    <p>• Investment income (dividends, interest, capital gains) is taxed at a <strong>flat 30% rate</strong> for non-residents</p>
+                                    <p>• Your effective tax rate: <strong>{result.taxable_income > 0 ? ((result.total_tax / result.taxable_income) * 100).toFixed(2) : 0}%</strong></p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Final Calculation */}
+                    <div className={`bg-white rounded-lg p-5 border-2 ${result.refund > 0 ? 'border-green-200' : 'border-red-200'}`}>
+                        <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                            {result.refund > 0 ? '✅ Your Refund' : '⚠️ Amount You Owe'}
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Total Tax Owed</span>
+                                <span className="font-mono">{formatMoney(result.total_tax)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Federal Tax Withheld (from W-2)</span>
+                                <span className="font-mono">-{formatMoney(values.federal_tax_withheld || 0)}</span>
+                            </div>
+                            <div className="border-t-2 border-gray-300 pt-2 mt-2"></div>
+                            <div className="flex justify-between font-bold text-2xl">
+                                {result.refund > 0 ? (
+                                    <>
+                                        <span className="text-green-700">Expected Refund 🎉</span>
+                                        <span className="font-mono text-green-600">{formatMoney(result.refund)}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-red-700">Amount to Pay</span>
+                                        <span className="font-mono text-red-600">{formatMoney(result.owe)}</span>
+                                    </>
+                                )}
+                            </div>
+                            {result.refund > 0 ? (
+                                <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
+                                    <p className="text-xs text-green-800">
+                                        <strong>Great news!</strong> You overpaid your taxes during the year. The IRS will send this money back to you via direct deposit or check.
+                                    </p>
+                                </div>
+                            ) : result.owe > 0 ? (
+                                <div className="bg-red-50 border border-red-200 rounded p-3 mt-3">
+                                    <p className="text-xs text-red-800">
+                                        <strong>You have a balance due.</strong> Not enough tax was withheld from your paychecks. You'll need to pay this when you file your return.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-3">
+                                    <p className="text-xs text-blue-800">
+                                        <strong>Perfect!</strong> Your withholdings matched your tax liability exactly. No refund and nothing owed.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
 };
+
 
 const preparePayload = (values) => ({
     ...values,
