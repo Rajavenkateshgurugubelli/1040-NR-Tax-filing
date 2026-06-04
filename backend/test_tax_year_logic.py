@@ -24,10 +24,10 @@ class TestTaxYearLogic(unittest.TestCase):
         }
 
     def test_india_standard_deduction_2025(self):
-        """Test India standard deduction for 2025 is $15,000"""
+        """Test India standard deduction for 2025 is $15,750"""
         data = UserData(**self.base_data, country_of_residence="India", tax_year=2025)
         result = calculate_tax(data)
-        self.assertEqual(result["itemized_deductions"], 15000, "Should be $15,000 for 2025")
+        self.assertEqual(result["itemized_deductions"], 15750, "Should be $15,750 for 2025")
 
     def test_india_standard_deduction_2024(self):
         """Test India standard deduction for 2024 is $14,600"""

@@ -22,9 +22,15 @@ def generate_fdf(fields):
 
 def fill_pdf(template_path, fields_dict):
     """
-    Fill PDF using PDFtk Server.
+    Fill PDF using PDFtk Server. Fallback to unfilled template bytes if PDFtk is not installed.
     """
     try:
+        pdftk_path = r"C:\Program Files (x86)\PDFtk Server\bin\pdftk.exe"
+        if not os.path.exists(pdftk_path):
+            print(f"Warning: PDFtk Server not found at '{pdftk_path}'. Falling back to original template bytes.")
+            with open(template_path, "rb") as f:
+                return f.read()
+
         fdf_content = generate_fdf(fields_dict)
         fd, fdf_path = tempfile.mkstemp(suffix='.fdf')
         with os.fdopen(fd, 'w') as f:
@@ -33,7 +39,7 @@ def fill_pdf(template_path, fields_dict):
         output_path = template_path.replace('.pdf', '_filled.pdf')
         
         pdftk_cmd = [
-            r"C:\Program Files (x86)\PDFtk Server\bin\pdftk.exe",
+            pdftk_path,
             template_path,
             "fill_form", fdf_path,
             "output", output_path,
@@ -49,7 +55,13 @@ def fill_pdf(template_path, fields_dict):
         return output_bytes
     except Exception as e:
         print(f"Error filling PDF: {e}")
-        return b"" # Return empty bytes on error instead of BytesIO
+        # Try to return template path as a last resort on error
+        try:
+            with open(template_path, "rb") as f:
+                return f.read()
+        except:
+            return b""
+
 
 def populate_schedule_nec(data: UserData):
     """

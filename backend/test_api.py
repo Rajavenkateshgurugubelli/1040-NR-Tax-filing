@@ -1,36 +1,7 @@
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from .main import app
-from .database import Base, get_db
 import pytest
 
-from sqlalchemy.pool import StaticPool
-
-# Setup Test Database
-SQLALCHEMY_DATABASE_URL = "sqlite://"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
-# Create tables
-Base.metadata.create_all(bind=engine)
-
-client = TestClient(app)
-
-def test_register_user():
+def test_register_user(client: TestClient):
     response = client.post(
         "/api/register",
         json={"email": "testuser@example.com", "password": "password123", "full_name": "Test User"}
@@ -40,7 +11,12 @@ def test_register_user():
     assert data["email"] == "testuser@example.com"
     assert "id" in data
 
-def test_login_user():
+def test_login_user(client: TestClient):
+    # Register first
+    client.post(
+        "/api/register",
+        json={"email": "testuser@example.com", "password": "password123", "full_name": "Test User"}
+    )
     response = client.post(
         "/api/token",
         data={"username": "testuser@example.com", "password": "password123"}
@@ -50,8 +26,8 @@ def test_login_user():
     assert "access_token" in data
     return data["access_token"]
 
-def test_read_users_me():
-    token = test_login_user()
+def test_read_users_me(client: TestClient):
+    token = test_login_user(client)
     response = client.get(
         "/api/users/me",
         headers={"Authorization": f"Bearer {token}"}
@@ -60,8 +36,8 @@ def test_read_users_me():
     data = response.json()
     assert data["email"] == "testuser@example.com"
 
-def test_create_tax_return():
-    token = test_login_user()
+def test_create_tax_return(client: TestClient):
+    token = test_login_user(client)
     tax_data = {
         "tax_year": 2025,
         "full_name": "Test User",
@@ -83,8 +59,26 @@ def test_create_tax_return():
     assert response.status_code == 200
     assert response.json()["status"] == "success"
 
-def test_get_tax_return():
-    token = test_login_user()
+def test_get_tax_return(client: TestClient):
+    token = test_login_user(client)
+    tax_data = {
+        "tax_year": 2025,
+        "full_name": "Test User",
+        "ssn": "000-00-0000",
+        "wages": 50000,
+        "federal_tax_withheld": 5000,
+        "address": "123 Main St",
+        "city": "City",
+        "state": "NY",
+        "zip_code": "10001",
+        "country_of_residence": "India",
+        "visa_type": "F1"
+    }
+    client.post(
+        "/api/tax-returns",
+        json=tax_data,
+        headers={"Authorization": f"Bearer {token}"}
+    )
     response = client.get(
         "/api/tax-returns/2025",
         headers={"Authorization": f"Bearer {token}"}

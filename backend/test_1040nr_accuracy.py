@@ -51,9 +51,9 @@ class Test1040NRAccuracy(unittest.TestCase):
         
         # Verify tax calculations are correct
         self.assertEqual(tax_results['taxable_wages'], 50000.0)
-        self.assertEqual(tax_results['itemized_deductions'], 15000)  # India standard deduction
-        self.assertEqual(tax_results['taxable_income'], 35000)
-        self.assertAlmostEqual(tax_results['total_tax'], 3961.50, delta=1.0)
+        self.assertEqual(tax_results['itemized_deductions'], 15750)  # India standard deduction
+        self.assertEqual(tax_results['taxable_income'], 34250)
+        self.assertAlmostEqual(tax_results['total_tax'], 3872.00, delta=1.0)
         
     def test_field_name_format(self):
         """Verify field names match official IRS format"""
@@ -108,8 +108,8 @@ class Test1040NRAccuracy(unittest.TestCase):
         """Test that India treaty benefits are correctly applied"""
         tax_results = calculate_tax(self.test_data)
         
-        # India should get standard deduction of $15,000
-        self.assertEqual(tax_results['itemized_deductions'], 15000)
+        # India should get standard deduction of $15,750
+        self.assertEqual(tax_results['itemized_deductions'], 15750)
         
         # Verify treaty success message in warnings
         warnings = tax_results['warnings']

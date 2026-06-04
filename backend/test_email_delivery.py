@@ -1,11 +1,8 @@
-
 import pytest
 from fastapi.testclient import TestClient
 from backend.main import app, email_service, auth as auth_module
 from backend.models import UserData
 from backend import models_db
-
-client = TestClient(app)
 
 # Mock User Data
 valid_user_data = {
@@ -26,9 +23,14 @@ valid_user_data = {
 def mock_get_current_user():
     return models_db.User(email="test@example.com", full_name="Test User", id=1)
 
-app.dependency_overrides[auth_module.get_current_user] = mock_get_current_user
+@pytest.fixture(autouse=True)
+def mock_user_auth():
+    app.dependency_overrides[auth_module.get_current_user] = mock_get_current_user
+    yield
+    if auth_module.get_current_user in app.dependency_overrides:
+        del app.dependency_overrides[auth_module.get_current_user]
 
-def test_email_endpoint_mock_success():
+def test_email_endpoint_mock_success(client: TestClient):
     """
     Test that the email endpoint returns 200 OK and "sends" the email
     when provided with an email address.
@@ -52,7 +54,7 @@ def test_email_endpoint_mock_success():
     finally:
         email_service.send_tax_return_email = original_send
 
-def test_download_package_refactor_success():
+def test_download_package_refactor_success(client: TestClient):
     """
     Verify that the refactored download_complete_package still works.
     """
